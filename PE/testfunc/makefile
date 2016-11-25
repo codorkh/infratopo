@@ -1,0 +1,15 @@
+TARGETS = addpow
+OBJECTS = test.o subadd.o
+REBUILD = $(TARGETS) $(OBJECTS)
+COMP = gfortran
+FFLAGS = -O2
+LFLAGS =
+
+all : $(TARGETS)
+
+$(TARGETS) : $(OBJECTS)
+	$(COMP) $(FFLAGS) -o $@ $^ $(LFLAGS) 
+ 
+%.o : %.f95
+	$(COMP) $(FFLAGS) -c $<
+
