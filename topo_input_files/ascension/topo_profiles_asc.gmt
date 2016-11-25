@@ -1,0 +1,33 @@
+#!/bin/tcsh -f
+
+#------------------------------------------
+# Script to read in the SRTM grd files generated
+# in /home/dgreen/local/ascension/topographic_set/plot_asc.gmt
+# and generate topographic profiles between the stations
+# Note: you need access to the grd file for the srtm_34_14 tile
+# [this can be downloaded from the usual place]
+# The simple python script appended at the end outputs the
+# required ASCII files for the propagation modelling.
+#------------------------------------------
+
+gmt sample1d -I50e <<END>! profile.xy
+-14.386794 -7.9612855
+-14.3751700 -7.9377400
+END
+
+
+#gmt grdtrack profile.xy -Gsrtm_34_14_pl.grd -DascL1.track
+
+
+# This appears to generate lon/lat/dist(km)/z(m)
+gmt grdtrack -E-14.386794/-7.9612855/-14.3751700/-7.9377400+d -f0x,1y,2f,3f -Gsrtm_34_14_pl.grd > L1.xydz
+
+gmt grdtrack -E-14.386794/-7.9612855/-14.3820400/-7.9319000+d -f0x,1y,2f,3f -Gsrtm_34_14_pl.grd > L2.xydz
+
+gmt grdtrack -E-14.386794/-7.9612855/-14.3820400/-7.9319000+d -f0x,1y,2f,3f -Gsrtm_34_14_pl.grd > L2.xydz
+
+gmt grdtrack -E-14.386794/-7.9612855/-14.357210/-7.9325000+d -f0x,1y,2f,3f -Gsrtm_34_14_pl.grd > L3.xydz
+
+gmt grdtrack -E-14.386794/-7.9612855/-14.3740900/-7.9511300+d -f0x,1y,2f,3f -Gsrtm_34_14_pl.grd > L4.xydz
+
+./plot_profiles_Lx.py
