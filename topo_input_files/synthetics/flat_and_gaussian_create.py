@@ -90,7 +90,7 @@ plt.rcParams.update(para)
 # 2D CASES
 #-----------
 
-L = 5000.
+L = 6000.
 A = 200.
 dx = 90.
 x0 = L/2.0
@@ -124,11 +124,11 @@ plt.show()
 #-----------------------------------------------------------------
 # Now to output to ASCII files
 #-----------------------------------------------------------------
-dirpath = '/Users/dgreen/Documents/Work/4codor/topo_input_files/synthetics/'
+dirpath = '/Users/dgreen/Documents/Work/4codor/infratopo/topo_input_files/synthetics/'
 
-regfile = 'gauss_'+str(int(A))+'m_hill.dat'
-irregfile = 'gauss_'+str(int(A))+'m_hill_irreg.dat'
-flatfile = 'flat_topo.dat'
+regfile = 'gauss_'+str(int(A))+'m_hill_short.dat'
+irregfile = 'gauss_'+str(int(A))+'m_hill_irreg_short.dat'
+flatfile = 'flat_topo_short.dat'
 
 fr = open(dirpath+regfile, 'w')
 for x in range(len(f_regular)):
@@ -146,11 +146,51 @@ for x in range(len(f_regular)):
 ff.close()
 
 
+#-----------------------------------------------------------------
+# Now for the long-range cases (500km)
+#-----------------------------------------------------------------
+
+L = 550000.
+A = 3000.
+dx = 1000.
+x0 = 250000.
+hw = 60000.
+
+
+x_regular = np.arange(0,L,dx)
+
+# Calculating the regular topography function.
+
+f_regular = gaussprof(A,hw,x_regular,x0)
+
+fig = plt.figure(figsize=(6,6))
+ax1 = fig.add_axes([0.2,0.2,0.7,0.7])
+
+ax1.plot(x_regular,f_regular,'ko')
+
+plt.xlabel('x (m)')
+plt.ylabel('y (m)')
+
+dirpath = '/Users/dgreen/Documents/Work/4codor/infratopo/topo_input_files/synthetics/'
+
+longfile = 'gauss_'+str(int(A))+'m_hill_long.dat'
+fr = open(dirpath+longfile, 'w')
+for x in range(len(f_regular)):
+    fr.write('{:6.0f} {:5.1f}\n'.format(x_regular[x],f_regular[x]))
+fr.close()
+
+
+longflat = 'flat_topo_long.dat'
+fr = open(dirpath+longflat, 'w')
+for x in range(len(f_regular)):
+    fr.write('{:6.0f} {:5.1f}\n'.format(x_regular[x],0.0))
+fr.close()
+
 #-----------
 # 3D CASES
 #-----------
 
-L = 5000.
+L = 6000.
 A = 200.
 dx = 90.
 dy = dx
@@ -186,8 +226,8 @@ plt.show()
 fig.savefig('gauss_3D_example_crude.png',bbox_inches='tight')
 
 # Output to ASCII
-regfile3d = 'gauss3d_'+str(int(A))+'m_hill.dat'
-flatfile3d = 'flat_topo_3d.dat'
+regfile3d = 'gauss3d_'+str(int(A))+'m_hill_short.dat'
+flatfile3d = 'flat_topo_3d_short.dat'
 
 fr3d = open(dirpath+regfile3d, 'w')
 for x in range(len(f3d)):

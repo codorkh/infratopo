@@ -57,3 +57,13 @@ temp_L1_L2_L3_L4_windfarm.dat -> the coordinates (in the same frame of reference
 infrasound array (I50GB) elements L1,L2,L3,L4 and the windfarm (in that order)
 asc_xyz_plot.py -> A python routine to plot a contour plot of the map, and the stations.
 ascension_xyz_example_crude.png -> A crude plot (output from asc_xyz_plot.py). Stations are black dots, windfarm is red star
+
+
+08/12/2016
+----------
+
+Following a meeting with Codor and Mahdi at Bristol yesterday I have generated a series of additional topographies that
+should be used to test the 2D PE FORTRAN code.
+
+In particular, I have generated a directory called 'alps' that contains a realistic Alpine topography file.
+
