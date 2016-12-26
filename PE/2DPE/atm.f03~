@@ -1,0 +1,42 @@
+MODULE ATM
+ USE NRTYPE
+ IMPLICIT NONE
+ !-----------------------------------------------------------
+ CONTAINS
+ !-----------------------------------------------------------
+ SUBROUTINE ATMLIN(N,k,c,c0,f,dz,a)
+  IMPLICIT NONE
+   INTEGER :: N
+   REAL, INTENT(IN) :: f, c0, dz, a
+   REAL, DIMENSION(:), INTENT(INOUT) :: k(N), c(N)
+   INTEGER :: i
+   DO i = 1,N
+    c(i) = c0+i*dz*a
+    k(i) = 2*PI*f/c(i)
+   END DO
+ END SUBROUTINE
+ !-----------------------------------------------------------
+ SUBROUTINE ATMLOG(N,k,c,c0,f,dz,z0,a)
+  IMPLICIT NONE
+  INTEGER :: N
+  REAL, INTENT(IN) :: f, c0, dz, a, z0
+  REAL, , DIMENSION(:), INTENT(INOUT) :: k(N), c(N)
+  INTEGER :: i
+  DO i = 1,N
+   c(i) = c0+a*LOG(1+i*dz/z0)
+   k(i) = 2*PI*f/c(i)
+  END DO
+ END SUBROUTINE
+ !-----------------------------------------------------------
+ SUBROUTINE ATMFULL(k,N)
+  
+ END SUBROUTINE 
+ !-----------------------------------------------------------
+ SUBROUTINE ATMISO(k,N)
+ END SUBROUTINE 
+ !-----------------------------------------------------------
+ SUBROUTINE 
+ END SUBROUTINE 
+ !-----------------------------------------------------------
+ !-----------------------------------------------------------
+END MODULE

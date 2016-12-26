@@ -1,0 +1,23 @@
+MODULE GROUND
+ 	USE NRTYPE
+ 	IMPLICIT NONE
+ 	!-----------------------------------------------------------
+ 	CONTAINS
+ 	!-----------------------------------------------------------
+ 	FUNCTION GHILL(H0,x0,x,s) RESULT(H)
+  	IMPLICIT NONE
+  	REAL(DP), INTENT(IN) :: H0, x0, s, x
+  	REAL(DP) :: H
+  	H = H0*EXP(-(x-x0)**2/s**2)
+ 	END FUNCTION
+ 	!-----------------------------------------------------------
+ 	FUNCTION THILL
+	END FUNCTION
+ 	!-----------------------------------------------------------
+	FUNCTION RHILL
+	END FUNCTION
+ 	!-----------------------------------------------------------
+	FUNCTION REALISTIC
+	END FUNCTION
+ 	!-----------------------------------------------------------
+END MODULE

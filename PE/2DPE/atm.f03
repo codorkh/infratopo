@@ -1,31 +1,49 @@
 MODULE ATM
-  USE PARAM
-  IMPLICIT NONE
-  !-----------------------------------------------------------
-  CONTAINS
-  !-----------------------------------------------------------
-  SUBROUTINE ATMLIN(k,c,c0,f,dz,a)
+    USE NRTYPE
+    USE NRINT
     IMPLICIT NONE
-    REAL, INTENT(IN) :: f, c0, dz, a
-    REAL, DIMENSION(:), INTENT(INOUT) :: k, c
-    INTEGER :: i, N
-    N = SIZE(c,1)
-    DO i = 1,N
-      c(i) = c0+i*dz*a
-      k(i) = 2*PI*f/c(i)
-    END DO
-  END SUBROUTINE
-  !-----------------------------------------------------------
-  SUBROUTINE ATMLOG(k,c,c0,f,dz,z0,a)
+    !-----------------------------------------------------------
+    CONTAINS
+    !-----------------------------------------------------------
+    SUBROUTINE ATMLIN(N,K,C,C0,F,DZ,A)
     IMPLICIT NONE
-    REAL, INTENT(IN) :: f, c0, dz, a, z0
-    REAL, , DIMENSION(:), INTENT(INOUT) :: k, c
-    INTEGER :: i, N
-    N = SIZE(c,1)
-    DO i = 1,N
-      c(i) = c0+a*LOG(1+i*dz/z0)
-      k(i) = 2*PI*f/c(i)
+    INTEGER :: N
+    REAL, INTENT(IN) :: F, C0, DZ, A
+    REAL, DIMENSION(:), INTENT(INOUT) :: K(N), C(N)
+    INTEGER :: I
+    DO I = 1,N
+        C(I) = C0+I*DZ*A
+        K(I) = 2*PI*F/C(I)
     END DO
-  END SUBROUTINE
-  !-----------------------------------------------------------
-END MODULE
+    END SUBROUTINE ATMLIN
+    !-----------------------------------------------------------
+    SUBROUTINE ATMLOG(N,K,C,C0,F,DZ,Z0,A)
+    IMPLICIT NONE
+    INTEGER :: N
+    REAL, INTENT(IN) :: F, C0, DZ, A, Z0
+    REAL, , DIMENSION(:), INTENT(INOUT) :: K(N), C(N)
+    INTEGER :: I
+    DO I = 1,N
+        C(I) = C0+A*LOG(1+I*DZ/Z0)
+        K(I) = 2*PI*F/C(I)
+    END DO
+    END SUBROUTINE ATMLOG
+    !-----------------------------------------------------------   
+    ! SUBROUTINE ATMREAL(N,K,C,NATM)
+    ! IMPLICIT NONE
+    ! INTEGER :: I, N, NATM
+    ! REAL, DIMENSION(:), INTENT(INOUT) :: K(N), C(N)
+    ! REAL, ALLOCATABLE, DIMENSION(:) :: CRAW, RANGE
+    ! I = 0
+    ! IF (NATM==1) THEN
+    !     OPEN(UNIT=200,FILE="atmos_2d_adiabatic_sound_sp.dat",ACTION="READ")
+    !     DO
+    !         I = I+1
+    !         READ(UNIT=200,FMT=*,IOSTAT=IOS) RANGE(I), C(I)
+    !         IF (IOS/=0) THEN
+    !     END DO
+    ! ELSE
+
+    ! END SUBROUTINE ATMREAL
+    !-----------------------------------------------------------
+END MODULE ATM
