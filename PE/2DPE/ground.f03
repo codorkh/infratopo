@@ -16,7 +16,8 @@ MODULE GROUND
  	IMPLICIT NONE
  	REAL(DP), INTENT(IN) :: H0, X0, D, X
  	REAL(DP) :: H
- 	
+  IF (X.LE.(X0-D)) THEN
+    X =
 	END FUNCTION THILL
  	!-----------------------------------------------------------
 	FUNCTION RHILL
