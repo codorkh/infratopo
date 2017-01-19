@@ -18,7 +18,7 @@ MODULE GROUND
  	IMPLICIT NONE
  	REAL(DP), INTENT(IN) :: H0, X0, D, X
  	REAL(DP) :: H
-  	IF ((X.LE.(X0-D).OR.(X.GE.(X0+D)) THEN
+  	IF ((X.LE.(X0-D)).OR.(X.GE.(X0+D))) THEN
     		H = 0
 	ELSEIF (X.LE.X0) THEN
 		H = H0*((X-X0)/D+1)
@@ -32,7 +32,7 @@ MODULE GROUND
  	IMPLICIT NONE
  	REAL(DP), INTENT(IN) :: H0, X0, D1, D2, X
  	REAL(DP) :: H
-  	IF ((X.LE.(X0-D1).OR.(X.GE.(X0+D2)) THEN
+  	IF ((X.LE.(X0-D1)).OR.(X.GE.(X0+D2))) THEN
     		H = 0
 	ELSEIF (X.LE.X0) THEN
 		H = H0*((X-X0)/D1+1)

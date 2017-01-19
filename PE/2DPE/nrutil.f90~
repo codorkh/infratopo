@@ -1233,7 +1233,7 @@ MODULE NRUTIL
   	END DO
  	END FUNCTION DIAG
  	!-----------------------------------------------------------
- 	FUNCTION NDIAG(E,N) RESULT(M)
+ 	FUNCTION BAND(E,N) RESULT(M)
   	IMPLICIT NONE
   	INTEGER, INTENT(IN) :: N
   	COMPLEX(DP), INTENT(IN), DIMENSION(:) :: E

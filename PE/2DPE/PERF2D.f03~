@@ -1,9 +1,14 @@
 PROGRAM PERF2D
 	USE NRTYPE
+	USE MATLIB
 	USE PARAM
 	USE GROUND
 	IMPLICIT NONE
 	!-----------------------------------------------------------
+	!Compile instructions in infratopo/PE/2DPE:
+	!
+	!gfortran -g -fbacktrace -Wtabs -o PERF2D PERF2D.f03 nrtype.f03 param.f03 ground.f03 matlib.f03 -llapack -lblas
+	!*** nrtype, param, ground, matlib : module files ***
 	!-----------------------------------------------------------
 	WRITE(*,*) ""
 	WRITE(*,*) "================================================"
@@ -17,7 +22,7 @@ PROGRAM PERF2D
 	WRITE(*,*) ""
 	WRITE(*,*) "================================================"
 	WRITE(*,*) ""
-	WRITE(*,*) "PE2D_HFR"
+	WRITE(*,*) "PERF2D - Performance Test Function for PE"
 	WRITE(*,*) "Dimension 	: 	2D"
 	WRITE(*,*) "Atmosphere	:	Homogeneous"
 	WRITE(*,*) "Boundary 	:	Flat"
@@ -25,14 +30,19 @@ PROGRAM PERF2D
 	WRITE(*,*) ""
 	WRITE(*,*) "================================================"
 	WRITE(*,*) ""
-	WRITE(*,*) "Enter inputs L, f, zs, As, angle"
+	WRITE(*,*) "propagation range = 10000 m"
+	WRITE(*,*) "frequency = 10Hz , wavelength = 34.3 m"
+	WRITE(*,*) "source height = 5 m"
+	WRITE(*,*) "max slope of terrain = 40 degrees"
 	WRITE(*,*) ""
-	READ *, L, F, ZS, ABL, ANGLE
-	WRITE(*,*) ""
-	WRITE(*,*) "Matrix Storage Method"
-	READ *, SP
 	!-----------------------------------------------------------
 	!----------------------------------------------------------
+	L = 10000
+	F = 10
+	ZS = 5
+	ABL = 0.07
+	ANGLE = 40
+	C0 = 343
 	lmbda0 = C0/F
 	K0 = 2*PI*F/C0
 	Dz = lmbda0/10
@@ -41,13 +51,19 @@ PROGRAM PERF2D
 	HABL = 30*lmbda0
 	N = FLOOR(H/dz)
 	M = FLOOR(L/dr)
+	WRITE(*,*) "================================================"
+	WRITE(*,*) ""
+	WRITE(*,*) "Size of the system : ", N
+	WRITE(*,*) "Number of loops : ", M
+	WRITE(*,*) ""
+	WRITE(*,*) "================================================"
 	NS = MAX(1,FLOOR(ZS/DZ))
 	NABL = FLOOR(HABL/dz)
 	ALPHA = IM/(2*K0*DZ**2)
 	!-----------------------------------------------------------
 	!-----------------------------------------------------------
 	!Memory allocation
-	ALLOCATE(K(1,N), DK2(1,N), ALT(1,N), PHI(N,M+1), T(N,N), D(N,N), M1(N,N), &
+	ALLOCATE(K(N), DK2(N), ALT(N), PHI(N,M+1), T(N,N), D(N,N), M1(N,N), &
 	M2(N,N), MAT(N,N), I(N,N), P(N,M), LP(N,M), LP2(N,M), LPG(M), LPG2(M), &
 	TERR2(1:M), LIN(0:M+1), TERR1(1:M+1), E(N,N), TEMP(N))
 	!-----------------------------------------------------------
@@ -75,8 +91,8 @@ PROGRAM PERF2D
 	H0 = SQRT(EXP(1.)/2)*L*ATAN(THETA)
 	S = 3*L/10
 	DO MX = 1,M+1
-		XL = HILL(H0,X0,(MX-1)*Dr,S)
-		XR = HILL(H0,X0,MX*Dr,S)
+		XL = GHILL(H0,X0,(MX-1)*DR,S)
+		XR = GHILL(H0,X0,MX*DR,S)
 		TERR1(MX) = (XR-XL)/Dr
 		LIN(MX) = LIN(MX-1)+(1+TERR1(MX))*Dr
 	END DO
