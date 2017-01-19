@@ -5,10 +5,10 @@ LDFLAGS = -L$HOME/slatec/src/static -lslatec -llapack -lblas
 all : PE2D_HFR
 
 PE2D_HFR : PE2D_HFR.o matlib.o fdlib.o
-	$(FC) $(FFLAGS) -o PE2D_HFR $(LDFLAGS)
+	$(FC) $(FFLAGS) $(LDFLAGS) -o PE2D_HFR
 
 PE2D_HFR.o : PE2D_HFR.f03 matlib.mod fdlib.mod param.mod
-	$(FC) $(FFLAGS) -c PE2D_HFR.f03 $(LDFLAGS)
+	$(FC) $(FFLAGS) $(LDFLAGS) -c PE2D_HFR.f03
 
 param.mod param.o : param.f03
 	$(FC) $(FFLAGS) -c param.f03

@@ -1,6 +1,7 @@
-PROGRAM PE2D_HTR
+PROGRAM PERF2D
 	USE NRTYPE
 	USE PARAM
+	USE GROUND
 	IMPLICIT NONE
 	!-----------------------------------------------------------
 	!-----------------------------------------------------------
@@ -48,7 +49,7 @@ PROGRAM PE2D_HTR
 	!Memory allocation
 	ALLOCATE(K(1,N), DK2(1,N), ALT(1,N), PHI(N,M+1), T(N,N), D(N,N), M1(N,N), &
 	M2(N,N), MAT(N,N), I(N,N), P(N,M), LP(N,M), LP2(N,M), LPG(M), LPG2(M), &
-	TERR2(1:M), LIN(0:M+1), TERR1(1:M+1))
+	TERR2(1:M), LIN(0:M+1), TERR1(1:M+1), E(N,N), TEMP(N))
 	!-----------------------------------------------------------
 	!Atmosphere
 	!-----------------------------------------------------------
@@ -93,92 +94,44 @@ PROGRAM PE2D_HTR
 	!-----------------------------------------------------------
 	!Matrix building
 	!-----------------------------------------------------------
-	!Initialization
+	!Initialization (Dense Matrices)
 	!---------
-	T(:,:) = 0
-	D(:,:) = 0
-	E(:,:) = 0
+	T(:,:) = 0.
+	D(:,:) = 0.
+	E(:,:) = 0.
 	I = EYE(N)
 	!---------
-	T(1,1) = T(1,1)-2+SIGMA1
-	T(1,2) = T(1,2)+1+SIGMA2
-	D(1,1) = DK2(1)
-	DO NZ = 2,N-1
+	DO NZ = 1,N !Out of bound elements ignored
 		T(NZ,NZ-1) = T(NZ,NZ-1)+1
 		T(NZ,NZ) = T(NZ,NZ)-2
 		T(NZ,NZ+1) = T(NZ,NZ+1)+1
 		D(NZ,NZ) = DK2(NZ)
 		E(NZ,NZ) = NZ*DZ
 	END DO
+	T(1,1) = T(1,1)-2+SIGMA1
+	T(1,2) = T(1,2)+1+SIGMA2
 	T(N,N-1) = T(N,N-1)+1+TAU2
 	T(N,N) = T(N,N)-2+TAU1
-	D(N,N) = DK2(N)
-	!---------
-	!Band Matrix Operations
-	!KL = 1
-	!KU = 1
-	!NDIAG = KU + KL + 1
-	!ALLOCATE(TSUBD(N),TSUPD(N),TDIAG(N),DDIAG(N),EDIAG(N))
-	!DDIAG(:) = DK2(:)
-	!EDIAG(:) = ALT(:)
-	!TDIAG(:) = -2.
-	!TSUBD(:) = 1.
-	!TSUPD(:) = 1.
-	!TDIAG(1) = DDIAG(1)+SIGMA1
-	!TDIAG(N) = DDIAG(N)+TAU1
-	!TSUPD(1) = TSUPD(1)+SIGMA2
-	!TSUBD(N-1) = TSUBD(N)+TAU2
-	ALLOCATE(MAT(3,N))
-	MAT(1,:) = 1.
-	MAT(3,:) = 1.
-	MAT(2,:) = 1. +  
-	!-----------------------------------------------------------
 	!-----------------------------------------------------------
 	!Forward-marching procedure
 	CALL CPU_TIME(TI)
 	!-----------------------------------------------------------
-	IF (SP == 0) THEN
-	!Dense type
-		DO MX = 2,M+1
-			WRITE(*, *) "Step :", MX-1, "out of", M
-			TERR2(MX-1) = (TERR1(MX)-TERR1(MX-1))/Dr
-			-IM*K0*TERR2(MX-1)*ALT(:)
-			WRITE(*, *) "1"
-			!M1 = I+(Dr/2)*(ALPHA*T+D)+(1/(2*im*K0))*(ALPHA*T+D)
-			!M2 = I-(Dr/2)*(ALPHA*T+D)+(1/(2*im*K0))*(ALPHA*T+D)
-			CALL CGBMV('N',N,N,KL,KU,1,MAT,NDIAG,PHI(1:N,MX-1),1,1,TEMP)
-			AA = 
-			BB = 
-			CC = 
-			CALL CGTSL(N,DSUB,DSUP,DMID,PHI(1:N,MX))
-			WRITE(*, *) "2"
-			P(1:N,MX-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
-		END DO
+	DO MX = 2,M+1
+		WRITE(*, *) "Step :", MX-1, "out of", M
+		TERR2(MX-1) = (TERR1(MX)-TERR1(MX-1))/Dr		!Varying coefficient to be injected...
+		D = D-IM*K0*TERR2(MX-1)*E				!... inside the D matrix
+		WRITE(*, *) ".... D Updated"
+		M1 = I+(Dr/2)*(ALPHA*T+D)+(1/(2*im*K0))*(ALPHA*T+D)	!Now the matrices M1 and M2 vary
+		M2 = I-(Dr/2)*(ALPHA*T+D)+(1/(2*im*K0))*(ALPHA*T+D)	!from step to step because of D
+		TEMP = MATMUL(M1,PHI(1:N,MX-1))
+		WRITE(*, *) ".... Right-hand side multiplied"			
+		MAT = INV(M2)
+		WRITE(*, *) ".... Matrix M2 inverted"
+		PHI(1:N,MX) = MATMUL(MAT,TEMP)
+		WRITE(*, *) ".... PHI updated"
+		P(1:N,MX-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
+	END DO
 	!-----------------------------------------------------------
-	!ELSEIF (SP == 1) THEN
-	!Sparse SLATEC
-		!DO MX = 2,M+1
-		!	WRITE(*, *) "Step :", MX-1, "out of", M
-		!	TERR2(MX-1) = (TERR1(MX)-TERR1(MX-1))/Dr
-		!	D = D-im*K0*TERR2(MX-1)*DIAG(ALT)
-		!	WRITE(*, *) "1"
-		!	M1 = I+(Dr/2)*(aa*T+D)+(1/(2*im*K0))*(aa*T+D)
-		!	M2 = I-(Dr/2)*(aa*T+D)+(1/(2*im*K0))*(aa*T+D)
-		!	!MAT = MATMUL(INV(M2),M1)
-		!	WRITE(*, *) "2"
-		!	!MAT_SP = SPCONV(MAT) ! SLOW PROCEDURE !
-		!	CALL SPRSIN_DP(M2,0,SPM2)
-		!	CALL SPRSIN_DP(M1,0,SPM1)
-		!	NELT = MAT_SP%NELT
-		!	ALLOCATE(IMAT(NELT),JMAT(NELT))
-		!	IMAT = MAT_SP%ROW
-		!	JMAT = MAT_SP%COL
-		!	VALMAT = MAT_SP%VAL
-		!	CALL DSMV(N,PHI(1:N,MX-1),PHI(1:N,MX),NELT,IMAT,JMAT,VALMAT,0)
-		!	P(1:N,mx-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
-		!END DO
-	!-----------------------------------------------------------
-	END IF
 	CALL CPU_TIME(TF)
 	!-----------------------------------------------------------
 	!-----------------------------------------------------------
@@ -195,9 +148,9 @@ PROGRAM PE2D_HTR
 	!-----------------------------------------------------------
 	!-----------------------------------------------------------
 	!Output
-	OPEN(UNIT=10,FILE="PE2D_HFR_LPg.dat")
-	OPEN(UNIT=20,FILE="PE2D_HFR_LP.dat")
-	OPEN(UNIT=30,FILE="PE2D_HFR_P.dat")
+	OPEN(UNIT=10,FILE="GROUNDLVL_TL.dat")
+	OPEN(UNIT=20,FILE="FULLFIELD_TL.dat")
+	OPEN(UNIT=30,FILE="FULLFIELD_P.dat")
 	DO NZ = 1,N
 		WRITE(20, 102) LP(NZ,1:M)
 		WRITE(30, 101) P(NZ,1:M)
@@ -211,7 +164,7 @@ PROGRAM PE2D_HTR
 	PRINT *, "Main CPU time (s) :", TF-TI
 	PRINT *, "Source pressure P0 (dB) :", 20*LOG10(ABS(P0))
 	!-----------------------------------------------------------
-END PROGRAM PE2D_HTR
+END PROGRAM PERF2D
 !-----------------------------------------------------------
 !-------------      EXTERNAL PROCEDURES      ---------------
 !-----------------------------------------------------------
