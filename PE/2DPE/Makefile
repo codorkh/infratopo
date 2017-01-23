@@ -1,7 +1,7 @@
 # Modified by Anton Shterenlikht
 
 FC=		gfortran6
-FFLAGS=		-g -O3 -fbacktrace -Wall
+FFLAGS=		-g -O3 -fbacktrace -Wall -fcheck=all
 LDFLAGS=	-Wl,-rpath="/usr/local/lib/gcc6" -llapack -lblas \
 		-L$(HOME)/slatec/src/static -lslatec -llapack -lblas
 
