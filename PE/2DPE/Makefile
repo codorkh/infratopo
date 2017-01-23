@@ -1,8 +1,8 @@
 # Modified by Anton Shterenlikht
 
-FC=		gfortran6
+FC=		gfortran
 FFLAGS=		-g -O3 -fbacktrace -Wall -fcheck=all
-LDFLAGS=	-Wl,-rpath="/usr/local/lib/gcc6" -llapack -lblas \
+LDFLAGS=	-Wl,-rpath="/usr/local/lib/gcc" -llapack -lblas \
 		-L$(HOME)/slatec/src/static -lslatec -llapack -lblas
 
 MOD_SRC=	nrtype.f03 matlib.f03 ground.f03 param.f03
@@ -15,7 +15,6 @@ PROG_OBJ=	$(PROG_SRC:.f03=.o)
 PROG_EXE=	$(PROG_SRC:.f03=.x)
 CLEAN+=		$(PROG_OBJ) $(PROG_EXE)
 
-.SUFFIXES:
 .SUFFIXES:	.f03 .mod .o
 
 all:		$(MOD_MOD) $(MOD_OBJ) $(PROG_OBJ) $(PROG_EXE)

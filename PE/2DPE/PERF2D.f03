@@ -144,7 +144,7 @@ PROGRAM PERF2D
 		WRITE(*, *) ".... Right-hand side multiplied"
 		MTEMP = M2			
 		CALL ZGESV(N,1,MTEMP,N,IPIV,TEMP,N,INFO)
-		WRITE(*, *) ".... System solved
+		WRITE(*, *) ".... System solved"
 		PHI(1:N,MX) = TEMP
 		P(1:N,MX-1) = EXP(IM*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
 	END DO
@@ -156,7 +156,7 @@ PROGRAM PERF2D
 	P0 = P(NS,1)
 	DO MX = 1,M
 		DO NZ = 1,N
-			LP(NZ,MX) = 20.*LOG10(ABS(P(NZ,MX-1)/ABS(P0))
+			LP(NZ,MX) = 20.*LOG10(ABS(P(NZ,MX-1)/P0))
 		END DO
 	END DO
 	LPG = LP(1,1:M)
