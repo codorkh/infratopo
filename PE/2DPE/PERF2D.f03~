@@ -64,8 +64,8 @@ PROGRAM PERF2D
 	!-----------------------------------------------------------
 	!Memory allocation
 	ALLOCATE(K(N), DK2(N), ALT(N), PHI(N,M+1), T(N,N), D(N,N), M1(N,N), &
-	M2(N,N), MAT(N,N), I(N,N), P(N,M), LP(N,M), LP2(N,M), LPG(M), LPG2(M), &
-	TERR2(1:M), LIN(0:M+1), TERR1(1:M+1), E(N,N), TEMP(N))
+	M2(N,N), I(N,N), P(N,M), LP(N,M), LP2(N,M), LPG(M), LPG2(M), &
+	TERR2(1:M), LIN(0:M+1), TERR1(1:M+1), E(N,N))
 	!-----------------------------------------------------------
 	!Atmosphere
 	!-----------------------------------------------------------
@@ -117,7 +117,7 @@ PROGRAM PERF2D
 	E(:,:) = 0.
 	I = EYE(N)
 	!---------
-	DO NZ = 1,N !Out of bound elements ignored
+	DO NZ = 2,N !Out of bound elements ignored
 		T(NZ,NZ-1) = T(NZ,NZ-1)+1
 		T(NZ,NZ) = T(NZ,NZ)-2
 		T(NZ,NZ+1) = T(NZ,NZ+1)+1
@@ -139,13 +139,14 @@ PROGRAM PERF2D
 		WRITE(*, *) ".... D Updated"
 		M1 = I+(Dr/2)*(ALPHA*T+D)+(1/(2*im*K0))*(ALPHA*T+D)	!Now the matrices M1 and M2 vary
 		M2 = I-(Dr/2)*(ALPHA*T+D)+(1/(2*im*K0))*(ALPHA*T+D)	!from step to step because of D
+		ALLOCATE(TEMP(N),MTEMP(N,N))		
 		TEMP = MATMUL(M1,PHI(1:N,MX-1))
-		WRITE(*, *) ".... Right-hand side multiplied"			
-		MAT = INV(M2)
-		WRITE(*, *) ".... Matrix M2 inverted"
-		PHI(1:N,MX) = MATMUL(MAT,TEMP)
-		WRITE(*, *) ".... PHI updated"
-		P(1:N,MX-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
+		WRITE(*, *) ".... Right-hand side multiplied"
+		MTEMP = M2			
+		CALL ZGESV(N,1,MTEMP,N,IPIV,TEMP,N,INFO)
+		WRITE(*, *) ".... System solved
+		PHI(1:N,MX) = TEMP
+		P(1:N,MX-1) = EXP(IM*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
 	END DO
 	!-----------------------------------------------------------
 	CALL CPU_TIME(TF)
@@ -155,7 +156,7 @@ PROGRAM PERF2D
 	P0 = P(NS,1)
 	DO MX = 1,M
 		DO NZ = 1,N
-			LP(NZ,MX) = 20*LOG10(ABS(P(NZ,MX-1)/P0))
+			LP(NZ,MX) = 20.*LOG10(ABS(P(NZ,MX-1)/ABS(P0))
 		END DO
 	END DO
 	LPG = LP(1,1:M)

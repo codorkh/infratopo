@@ -1,6 +1,8 @@
 PROGRAM PE2D_HTR
 	USE NRTYPE
+	USE MATLIB
 	USE PARAM
+	USE GROUND
 	IMPLICIT NONE
 	!-----------------------------------------------------------
 	!-----------------------------------------------------------
@@ -28,54 +30,63 @@ PROGRAM PE2D_HTR
 	WRITE(*,*) ""
 	READ *, L, F, ZS, ABL, ANGLE
 	WRITE(*,*) ""
-	WRITE(*,*) "Matrix Storage Method"
-	READ *, SP
 	!-----------------------------------------------------------
 	!----------------------------------------------------------
-	lmbda0 = C0/F
+	C0 = CMPLX(343.0_DP,0.0_DP,KIND=DP)
+	LMBDA0 = C0/F
 	K0 = 2*PI*F/C0
-	Dz = lmbda0/10
-	Dr = lmbda0/10
-	H = 100*lmbda0
-	HABL = 30*lmbda0
-	N = FLOOR(H/dz)
-	M = FLOOR(L/dr)
+	DZ = LMBDA0/10
+	DR = LMBDA0/10
+	H = 100*LMBDA0
+	HABL = 30*LMBDA0
+	N = FLOOR(H/DZ)
+	M = FLOOR(L/DR)
+	WRITE(*,*) "================================================"
+	WRITE(*,*) ""
+	WRITE(*,*) "Size of the system : ", N
+	WRITE(*,*) "Number of loops : ", M
+	WRITE(*,*) ""
+	WRITE(*,*) "================================================"
 	NS = MAX(1,FLOOR(ZS/DZ))
 	NABL = FLOOR(HABL/dz)
-	ALPHA = IM/(2*K0*DZ**2)
+	ALPHA = IM/(2.*K0*DZ**2)
+	KU = 1
+	KL = 1
+	NDIAG = KU+KL+1
+	NDIAGX = KU+2*KL+1
 	!-----------------------------------------------------------
 	!-----------------------------------------------------------
 	!Memory allocation
-	ALLOCATE(K(1,N), DK2(1,N), ALT(1,N), PHI(N,M+1), T(N,N), D(N,N), M1(N,N), &
-	M2(N,N), MAT(N,N), I(N,N), P(N,M), LP(N,M), LP2(N,M), LPG(M), LPG2(M), &
-	TERR2(1:M), LIN(0:M+1), TERR1(1:M+1))
+	ALLOCATE(K(N), DK2(N), ALT(N), PHI(N,M+1), T(N,N), D(N,N), M1(N,N), &
+	M2(N,N), MB1(NDIAG,N), MB2(NDIAG,N), P(N,M), LP(N,M), LP2(N,M), LPG(M), LPG2(M), &
+	TERR2(1:M), LIN(0:M+1), TERR1(1:M+1), MB1X(NDIAG,N), MB2X(NDIAG,N))
 	!-----------------------------------------------------------
 	!Atmosphere
 	!-----------------------------------------------------------
 	!
 	DO NZ = 1,N
 		IF (NZ >= N-NABL) THEN
-			K(NZ) = K0+ABL*im*(NZ-N+NABL)**2/NABL**2
+			K(NZ) = K0+ABL*IM*(NZ-N+NABL)**2/NABL**2
 		ELSE
 			K(NZ) = K0
 		ENDIF
-		DK2(NZ) = im*(K(NZ)**2-(K0**2))/(2*K0)
-		ALT(NZ) = NZ*Dz
+		DK2(NZ) = IM*(K(NZ)**2-(K0**2))/(2*K0)
+		ALT(NZ) = NZ*DZ
 	END DO
-	TAU1 = 4/(3-2*im*K0*Dz)
-	TAU2 = -1/(3-2*im*K0*Dz)
-	SIGMA1 = 4/3
-	SIGMA2 = -1/3
+	TAU1 = 4./(3.-2.*IM*K0*DZ)
+	TAU2 = -1./(3.-2.*IM*K0*DZ)
+	SIGMA1 = 4./3.
+	SIGMA2 = -1./3.
 	!-----------------------------------------------------------
 	!Terrain
 	!-----------------------------------------------------------
 	LIN(0) = 0
-	THETA = ANGLE*PI/180
-	H0 = SQRT(EXP(1.)/2)*L*ATAN(THETA)
+	THETA = ANGLE*PI/180.
 	S = 3*L/10
+	H0 = SQRT(EXP(1.)/2.)*S*ATAN(THETA)
 	DO MX = 1,M+1
-		XL = HILL(H0,X0,(MX-1)*Dr,S)
-		XR = HILL(H0,X0,MX*Dr,S)
+		XL = GHILL(H0,X0,S,(MX-1)*Dr)
+		XR = GHILL(H0,X0,S,MX*DR)
 		TERR1(MX) = (XR-XL)/Dr
 		LIN(MX) = LIN(MX-1)+(1+TERR1(MX))*Dr
 	END DO
@@ -84,9 +95,9 @@ PROGRAM PE2D_HTR
 	!-----------------------------------------------------------
 	A0 = 1.3717
 	A2 = -0.3701
-	B = 3
+	B = 3.
 	DO NZ = 1,N
-		PHI(NZ,1) = SQRT(im*K0)* &
+		PHI(NZ,1) = SQRT(IM*K0)* &
 		((A0+A2*K0**2*(NZ*Dz-ZS)**2)*EXP(-K0**2*(NZ*Dz-ZS)**2/B) &
 		+ (A0+A2*K0**2*(NZ*Dz+ZS)**2)*EXP(-K0**2*(NZ*Dz+ZS)**2/B))
 	END DO
@@ -95,65 +106,81 @@ PROGRAM PE2D_HTR
 	!-----------------------------------------------------------
 	!Initialization
 	!---------
-	T(:,:) = 0
-	D(:,:) = 0
-	E(:,:) = 0
-	I = EYE(N)
-	!---------
-	T(1,1) = T(1,1)-2+SIGMA1
-	T(1,2) = T(1,2)+1+SIGMA2
-	D(1,1) = DK2(1)
-	DO NZ = 2,N-1
-		T(NZ,NZ-1) = T(NZ,NZ-1)+1
-		T(NZ,NZ) = T(NZ,NZ)-2
-		T(NZ,NZ+1) = T(NZ,NZ+1)+1
-		D(NZ,NZ) = DK2(NZ)
-		E(NZ,NZ) = NZ*DZ
+!	T(:,:) = 0.
+!	D(:,:) = 0.
+!	I = EYE(N)
+!	!---------
+!	T(1,1) = T(1,1)-2+SIGMA1
+!	T(1,2) = T(1,2)+1+SIGMA2
+!	D(1,1) = DK2(1)
+!	DO NZ = 2,N-1
+!		T(NZ,NZ-1) = T(NZ,NZ-1)+1
+!		T(NZ,NZ) = T(NZ,NZ)-2
+!		T(NZ,NZ+1) = T(NZ,NZ+1)+1
+!		D(NZ,NZ) = DK2(NZ)
+!	END DO
+!	T(N,N-1) = T(N,N-1)+1+TAU2
+!	T(N,N) = T(N,N)-2+TAU1
+!	D(N,N) = DK2(N)
+!	!---------
+!	M1 = I+(DR/2.)*(ALPHA*T+D)+(1./(2.*IM*K0))*(ALPHA*T+D)
+!	M2 = I-(DR/2.)*(ALPHA*T+D)+(1./(2.*IM*K0))*(ALPHA*T+D)
+!	!---------
+!	DO NZ = 1,N
+!                NN = KU+1-NZ
+!                DO MX = MAX(1,NZ-KU),MIN(N,NZ+KL)
+!                      	MB1(NN+MX,NZ) = M1(MX,NZ)
+!			MB2(NN+MX,NZ) = M2(MX,NZ)
+!          	END DO
+!        END DO
+!	MB1X = MB1
+!	MB2X = MB2
+	!Tridiagonal FD matrix
+	T(1,2:N) = ONES(N-1)		!Supdiag
+	T(2,1:N) = -2*ONES(N)		!Diag
+	T(3,1:N-1) = ONES(N-1)		!Subdiag
+	T(1,2) = T(1,2)+SIGMA2
+	T(2,1) = T(2,1)+SIGMA1
+	T(2,N) = T(2,N)+TAU1
+	T(3,N-1) = T(3,N-1)+TAU2
+	DO I = 1,KU
+		M1(I,:) = (1./(2.*IM*K0)+DR/2.)*ALPHA*T(I,:)
+		M2(I,:) = (1./(2.*IM*K0)-DR/2.)*ALPHA*T(I,:)
 	END DO
-	T(N,N-1) = T(N,N-1)+1+TAU2
-	T(N,N) = T(N,N)-2+TAU1
-	D(N,N) = DK2(N)
-	!---------
-	!Band Matrix Operations
-	!KL = 1
-	!KU = 1
-	!NDIAG = KU + KL + 1
-	!ALLOCATE(TSUBD(N),TSUPD(N),TDIAG(N),DDIAG(N),EDIAG(N))
-	!DDIAG(:) = DK2(:)
-	!EDIAG(:) = ALT(:)
-	!TDIAG(:) = -2.
-	!TSUBD(:) = 1.
-	!TSUPD(:) = 1.
-	!TDIAG(1) = DDIAG(1)+SIGMA1
-	!TDIAG(N) = DDIAG(N)+TAU1
-	!TSUPD(1) = TSUPD(1)+SIGMA2
-	!TSUBD(N-1) = TSUBD(N)+TAU2
-	ALLOCATE(MAT(3,N))
-	MAT(1,:) = 1.
-	MAT(3,:) = 1.
-	MAT(2,:) = 1. +  
+	DO I = NDIAG,KU+1,1
+		M1(I,:) = (1./(2.*IM*K0)+DR/2.)*ALPHA*T(I,:)
+		M2(I,:) = (1./(2.*IM*K0)-DR/2.)*ALPHA*T(I,:)
+	END DO
 	!-----------------------------------------------------------
 	!-----------------------------------------------------------
 	!Forward-marching procedure
 	CALL CPU_TIME(TI)
 	!-----------------------------------------------------------
-	IF (SP == 0) THEN
-	!Dense type
-		DO MX = 2,M+1
-			WRITE(*, *) "Step :", MX-1, "out of", M
-			TERR2(MX-1) = (TERR1(MX)-TERR1(MX-1))/Dr
-			-IM*K0*TERR2(MX-1)*ALT(:)
-			WRITE(*, *) "1"
-			!M1 = I+(Dr/2)*(ALPHA*T+D)+(1/(2*im*K0))*(ALPHA*T+D)
-			!M2 = I-(Dr/2)*(ALPHA*T+D)+(1/(2*im*K0))*(ALPHA*T+D)
-			CALL CGBMV('N',N,N,KL,KU,1,MAT,NDIAG,PHI(1:N,MX-1),1,1,TEMP)
-			AA = 
-			BB = 
-			CC = 
-			CALL CGTSL(N,DSUB,DSUP,DMID,PHI(1:N,MX))
-			WRITE(*, *) "2"
-			P(1:N,MX-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
-		END DO
+	DO MX = 2,M+1
+		WRITE(*, *) "Step :", MX-1, "out of", M
+		TERR2(MX-1) = (TERR1(MX)-TERR1(MX-1))/Dr
+		WRITE(*, *) "1"
+		M1(KU+1,:) = ONES(N)+(1./(2.*IM*K0)+DR/2.)*ALPHA*T(2,:)+(1./(2.*IM*K0)+DR/2.)*(DK2(:)-IM*K0*TERR2(MX-1)*ALT(:))
+		M2(KU+1,:) = ONES(N)+(1./(2.*IM*K0)-DR/2.)*ALPHA*T(2,:)+(1./(2.*IM*K0)-DR/2.)*(DK2(:)-IM*K0*TERR2(MX-1)*ALT(:))
+		!MB1X(KU+1,:) = MB1(KU+1,:)-(1./(2.*IM*K0)+DR/2.)*(IM*K0*TERR2(MX-1)*ALT(:))
+		!MB2X(KU+1,:) = MB2(KU+1,:)-(1./(2.*IM*K0)-DR/2.)*(IM*K0*TERR2(MX-1)*ALT(:))
+		ALLOCATE(AA(N-1),BB(N),CC(N-1),TEMP(N,1),M2X(NDIAGX,N),IPIV(N))
+		!CGBMV (TRANS,M,N,KL,KU,ALPHA,A,LDA,X,INCX,BETA,Y,INCY)
+		CALL ZGBMV('N',N,N,KL,KU,1.,M1,NDIAG,PHI(1:N,MX-1),1,0.,TEMP(1:N,1),1)
+!		AA = MB2X(3,1:N-1)  
+!		BB = MB2X(2,:)
+!		CC = MB2X(1,2:N)
+		M2X(KL+1:NDIAGX,:) = M2
+		!AA, BB, CC destroyed after CGTSL
+		CALL ZGBSV(N,KL,KU,1,M2X,NDIAGX,IPIV,TEMP,N,INFO)
+		IF (INFO.NE.0) THEN
+			STOP "WARNING : Input Matrix is singular !"
+		END IF
+		PHI(1:N,MX) = TEMP(1:N,1)
+		DEALLOCATE(AA,BB,CC,TEMP,M2X,IPIV)
+		WRITE(*, *) "2"
+		P(1:N,MX-1) = EXP(IM*K0*(MX-1)*DR)*PHI(1:N,MX)*(1/SQRT((MX-1)*DR))
+	END DO
 	!-----------------------------------------------------------
 	!ELSEIF (SP == 1) THEN
 	!Sparse SLATEC
@@ -178,15 +205,14 @@ PROGRAM PE2D_HTR
 		!	P(1:N,mx-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
 		!END DO
 	!-----------------------------------------------------------
-	END IF
 	CALL CPU_TIME(TF)
 	!-----------------------------------------------------------
 	!-----------------------------------------------------------
 	!Transmission loss conversion
-	P0 = P(NS,1)
+	P0 = ABS(P(NS,2))
 	DO MX = 1,M
 		DO NZ = 1,N
-			LP(NZ,MX) = 20*LOG10(ABS(P(NZ,MX-1)/P0))
+			LP(NZ,MX) = 20.*LOG10(ABS(P(NZ,MX-1)))
 		END DO
 	END DO
 	LPG = LP(1,1:M)
@@ -195,9 +221,9 @@ PROGRAM PE2D_HTR
 	!-----------------------------------------------------------
 	!-----------------------------------------------------------
 	!Output
-	OPEN(UNIT=10,FILE="PE2D_HFR_LPg.dat")
-	OPEN(UNIT=20,FILE="PE2D_HFR_LP.dat")
-	OPEN(UNIT=30,FILE="PE2D_HFR_P.dat")
+	OPEN(UNIT=10,FILE="PE2D_HTR_LPg.dat")
+	OPEN(UNIT=20,FILE="PE2D_HTR_LP.dat")
+	OPEN(UNIT=30,FILE="PE2D_HTR_P.dat")
 	DO NZ = 1,N
 		WRITE(20, 102) LP(NZ,1:M)
 		WRITE(30, 101) P(NZ,1:M)
