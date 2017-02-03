@@ -37,7 +37,7 @@ PROGRAM PERF2D
 	WRITE(*,*) ""
 	!-----------------------------------------------------------
 	!----------------------------------------------------------
-	L = 10000
+	L = 5000
 	F = 10
 	ZS = 5
 	ABL = 0.07
@@ -69,7 +69,6 @@ PROGRAM PERF2D
 	!-----------------------------------------------------------
 	!Atmosphere
 	!-----------------------------------------------------------
-	!
 	DO NZ = 1,N
 		IF (NZ >= N-NABL) THEN
 			K(NZ) = K0+ABL*im*(NZ-N+NABL)**2/NABL**2
@@ -79,10 +78,10 @@ PROGRAM PERF2D
 		DK2(NZ) = im*(K(NZ)**2-(K0**2))/(2*K0)
 		ALT(NZ) = NZ*Dz
 	END DO
-	TAU1 = 4/(3-2*im*K0*Dz)
-	TAU2 = -1/(3-2*im*K0*Dz)
-	SIGMA1 = 4/3
-	SIGMA2 = -1/3
+	TAU1 = 4./(3.-2.*im*K0*Dz)
+	TAU2 = -1./(3.-2.*im*K0*Dz)
+	SIGMA1 = 4./3.
+	SIGMA2 = -1./3.
 	!-----------------------------------------------------------
 	!Terrain
 	!-----------------------------------------------------------
@@ -139,7 +138,7 @@ PROGRAM PERF2D
 		WRITE(*, *) ".... D Updated"
 		M1 = I+(Dr/2)*(ALPHA*T+D)+(1/(2*im*K0))*(ALPHA*T+D)	!Now the matrices M1 and M2 vary
 		M2 = I-(Dr/2)*(ALPHA*T+D)+(1/(2*im*K0))*(ALPHA*T+D)	!from step to step because of D
-		ALLOCATE(TEMP(N),MTEMP(N,N))		
+		ALLOCATE(TEMP(N),MTEMP(N,N),IPIV(N))		
 		TEMP = MATMUL(M1,PHI(1:N,MX-1))
 		WRITE(*, *) ".... Right-hand side multiplied"
 		MTEMP = M2			
@@ -147,6 +146,7 @@ PROGRAM PERF2D
 		WRITE(*, *) ".... System solved"
 		PHI(1:N,MX) = TEMP
 		P(1:N,MX-1) = EXP(IM*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
+		DEALLOCATE(IPIV,TEMP,MTEMP)
 	END DO
 	!-----------------------------------------------------------
 	CALL CPU_TIME(TF)
