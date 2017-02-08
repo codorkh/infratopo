@@ -1,7 +1,7 @@
 # Modified by Anton Shterenlikht
 
 FC=		gfortran
-FFLAGS=		-g -O3 -fbacktrace -Wall -fcheck=all
+FFLAGS=		-g -O3 -fbacktrace -Wall
 LDFLAGS=	-Wl,-rpath="/usr/local/lib/gcc" -llapack -lblas \
 		-L$(HOME)/slatec/src/static -lslatec -llapack -lblas
 
@@ -10,7 +10,7 @@ MOD_MOD=	$(MOD_SRC:.f03=.mod)
 MOD_OBJ=	$(MOD_SRC:.f03=.o)
 CLEAN+=		$(MOD_MOD) $(MOD_OBJ)
 
-PROG_SRC=	PERF2D.f03
+PROG_SRC=	PE2D_HTR.f03
 PROG_OBJ=	$(PROG_SRC:.f03=.o)
 PROG_EXE=	$(PROG_SRC:.f03=.x)
 CLEAN+=		$(PROG_OBJ) $(PROG_EXE)
