@@ -10,14 +10,22 @@ MOD_MOD=	$(MOD_SRC:.f03=.mod)
 MOD_OBJ=	$(MOD_SRC:.f03=.o)
 CLEAN+=		$(MOD_MOD) $(MOD_OBJ)
 
-PROG_SRC=	PE2D_HT_FD.f03 #PE2D_HF_FD.f03
-PROG_OBJ=	$(PROG_SRC:.f03=.o)
-PROG_EXE=	$(PROG_SRC:.f03=.x)
-CLEAN+=		$(PROG_OBJ) $(PROG_EXE)
+PROG1_SRC=	PE2D_HT_FD.f03
+PROG1_OBJ=	$(PROG1_SRC:.f03=.o)
+PROG1_EXE=	$(PROG1_SRC:.f03=.x)
+CLEAN+=		$(PROG1_OBJ) $(PROG1_EXE)
+
+PROG2_SRC=	PE2D_HF_FD.f03
+PROG2_OBJ=	$(PROG2_SRC:.f03=.o)
+PROG2_EXE=	$(PROG2_SRC:.f03=.x)
+CLEAN+=		$(PROG2_OBJ) $(PROG2_EXE)
 
 .SUFFIXES:	.f03 .mod .o
 
-all:		$(MOD_MOD) $(MOD_OBJ) $(PROG_OBJ) $(PROG_EXE)
+all:		$(PROG1_EXE) $(PROG2_EXE)
+
+$(MOD_MOD) $(MOD_OBJ): $(MOD_SRC)
+$(PROG1_OBJ) $(PROG2_OBJ): $(MOD_MOD)
 
 .f03.mod:
 	$(FC) -c $(FFLAGS) $<
@@ -26,11 +34,11 @@ all:		$(MOD_MOD) $(MOD_OBJ) $(PROG_OBJ) $(PROG_EXE)
 .f03.o:
 	$(FC) -c $(FFLAGS) $<
 
-$(PROG_OBJ):	$(PROG_SRC) $(MOD_MOD)
-	$(FC) -c $(FFLAGS) $(PROG_SRC)
+$(PROG1_EXE):	$(PROG1_OBJ) $(MOD_OBJ)
+	$(FC) -o $@ $(FFLAGS) $(PROG1_OBJ) $(MOD_OBJ) $(LDFLAGS)
 
-$(PROG_EXE):	$(PROG_OBJ) $(MOD_OBJ)
-	$(FC) -o $@ $(FFLAGS) $(PROG_OBJ) $(MOD_OBJ) $(LDFLAGS)
+$(PROG2_EXE):	$(PROG2_OBJ) $(MOD_OBJ)
+	$(FC) -o $@ $(FFLAGS) $(PROG2_OBJ) $(MOD_OBJ) $(LDFLAGS)
 
 clean :
 	rm $(CLEAN)
