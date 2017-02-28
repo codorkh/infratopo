@@ -1,8 +1,8 @@
-PROGRAM 2DPE_HT_FD
- USE NRTYPE
- USE MATLIB
- USE PARAM
- USE GROUND
+PROGRAM PE2D_HT_FD
+ USE PE2D_TYPE
+ USE PE2D_VAR
+ USE PE2D_AUX
+ USE PE2D_GROUND
  IMPLICIT NONE
  !-----------------------------------------------------------
  !-----------------------------------------------------------
@@ -59,18 +59,18 @@ PROGRAM 2DPE_HT_FD
  ALLOCATE(K(N), DK2(N), ALT(N), PHI(N,M+1), T(N,N), D(N,N), M1(N,N), &
  M2(N,N), I(N,N), P(N,M), LP(N,M), LP2(N,M), LPG(M), LPG2(M), E(N,N), &
  MB2(NDIAG,N), MB1(NDIAG,N), TEMP(N,1), M1T(N,N), M2T(N,N), IPIV(N), &
- TERR(1:M+1), TERR1(1:M+1), TERR2(1:M+1), LIN(0:M+1), GHX(3), COND(M,2), &
+ TERR(1:M+1), TERR1(1:M+1), TERR2(1:M), LIN(0:M), GHX(3), MCOND(M,2), &
  MB1T(NDIAG,N), MB2T(KL+NDIAG,N))
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Atmosphere density and wave velocity
  DO NZ = 1,N
-  IF (NZ >= N-NABL) THEN
+  IF (NZ.GE.(N-NABL)) THEN
    K(NZ) = K0+ABL*IM*(NZ-N+NABL)**2/NABL**2
   ELSE
    K(NZ) = K0
   ENDIF
-  DK2(NZ) = IM*(K(NZ)**2-K0**2)/(2*K0)
+  DK2(NZ) = IM*(K(NZ)**2-K0**2)/2*K0
   ALT(NZ) = NZ*DZ
  END DO
  TAU1 = 4.0_DP/(3.0_DP-2.0_DP*IM*K0*DZ)
@@ -88,8 +88,8 @@ PROGRAM 2DPE_HT_FD
  DO MX = 1,M
   GHX = GHILL(H0,X0,S,MX*DR)
   TERR(MX) = GHX(1)
-  !TERR1(MX) = GHX(2)
-  !TERR2(MX) = GHX(3)
+  TERR1(MX) = GHX(2)
+  TERR2(MX) = GHX(3)
   LIN(MX) = LIN(MX-1)+(1+TERR1(MX))*DR
  END DO
  !-----------------------------------------------------------
@@ -143,8 +143,8 @@ PROGRAM 2DPE_HT_FD
   !-------------------------------
   !Matrix updating
   !-------------------------------
-  TERR1(MX-1) = 
-  TERR2(MX-1) = (TERR1(MX)-TERR1(MX-1))/DR  			!Varying coefficient to be injected...  
+  !TERR1(MX-1) = (TERR(MX)-TERR(MX-1))/DR
+  !TERR2(MX-1) = (TERR1(MX)-TERR1(MX-1))/DR       !Varying coefficient to be injected...  
   MB1T = MB1
   MB1T(KU+1,:) = MB1(KU+1,:)-BETA1*IM*K0*TERR2(MX-1)*ALT
   MB2T(KL+1:KL+NDIAG,:) = MB2
@@ -154,7 +154,6 @@ PROGRAM 2DPE_HT_FD
   !-------------------------------
   CALL ZGBMV('N',N,N,KL,KU,ALPHA,MB1T,KL+KU+1,PHI(1:N,MX-1),1,BETA,TEMP(:,1),1)
   WRITE(*,*) ".... Right-hand side multiplied"
-  WRITE(*,*)
   !-------------------------------
   !System solving
   !-------------------------------
@@ -166,45 +165,23 @@ PROGRAM 2DPE_HT_FD
    STOP "ERROR : Matrix is singular"
   END IF
   WRITE(*,*) ".... System solved"
-  WRITE(*,*)
   PHI(1:N,MX) = TEMP(:,1)
-  P(1:N,MX-1) = EXP(IM*K0*(MX-1)*DR)*PHI(1:N,MX)*(1/SQRT((MX-1)*DR))
+  P(1:N,MX-1) = EXP(IM*K0*(MX-1)*DR)*PHI(1:N,MX)/SQRT((MX-1)*DR)
+  WRITE(*,*)
  END DO
  !-----------------------------------------------------------
- !ELSEIF (SP == 1) THEN
- !Sparse SLATEC
-  !DO MX = 2,M+1
-  ! WRITE(*, *) "Step :", MX-1, "out of", M
-  ! TERR2(MX-1) = (TERR1(MX)-TERR1(MX-1))/Dr
-  ! D = D-im*K0*TERR2(MX-1)*DIAG(ALT)
-  ! WRITE(*, *) "1"
-  ! M1 = I+(Dr/2)*(aa*T+D)+(1/(2*im*K0))*(aa*T+D)
-  ! M2 = I-(Dr/2)*(aa*T+D)+(1/(2*im*K0))*(aa*T+D)
-  ! !MAT = MATMUL(INV(M2),M1)
-  ! WRITE(*, *) "2"
-  ! !MAT_SP = SPCONV(MAT) ! SLOW PROCEDURE !
-  ! CALL SPRSIN_DP(M2,0,SPM2)
-  ! CALL SPRSIN_DP(M1,0,SPM1)
-  ! NELT = MAT_SP%NELT
-  ! ALLOCATE(IMAT(NELT),JMAT(NELT))
-  ! IMAT = MAT_SP%ROW
-  ! JMAT = MAT_SP%COL
-  ! VALMAT = MAT_SP%VAL
-  ! CALL DSMV(N,PHI(1:N,MX-1),PHI(1:N,MX),NELT,IMAT,JMAT,VALMAT,0)
-  ! P(1:N,mx-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
-  !END DO
  !-----------------------------------------------------------
  CALL CPU_TIME(TF)
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Transmission loss conversion
- P0 = P(NS,1)
+ P0 = ABS(P(NS,1))
  DO MX = 1,M
   DO NZ = 1,N
-   IF (ABS(P(NZ,MX)).LE.10**(-6)) THEN
-    P(NZ,MX) = 10**(-6)
+   LP(NZ,MX) = 20.*LOG10(ABS(P(NZ,MX))/P0)
+   IF (LP(NZ,MX).LE.-120) THEN
+    LP(NZ,MX) = -120
    END IF
-   LP(NZ,MX) = 20.*LOG10(ABS(P(NZ,MX)/P0))
   END DO
  END DO
  LPG = LP(1,1:M)
@@ -213,22 +190,24 @@ PROGRAM 2DPE_HT_FD
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Output
- OPEN(UNIT=10,FILE="results/Test_LPg.dat")
- OPEN(UNIT=20,FILE="results/Test_LP.dat")
- OPEN(UNIT=30,FILE="results/Test_P.dat")
- !OPEN(UNIT=40,FILE="results/Test_Cond.dat")
- OPEN(UNIT=50,FILE="results/Test_Terr.dat")
+ OPEN(UNIT=10,FILE="../results/Topo_LPg.dat")
+ OPEN(UNIT=20,FILE="../results/Topo_LP.dat")
+ OPEN(UNIT=30,FILE="../results/Topo_P.dat")
+ !OPEN(UNIT=40,FILE="../results/Test_Cond.dat")
+ OPEN(UNIT=50,FILE="../results/Topo.dat")
  DO MX = 1,M
   WRITE(10,100) MX*DR, LPG(MX), LPG2(MX)
-  WRITE(40,100) COND(MX,1), COND(MX,2)
+  !WRITE(40,100) COND(MX,1), COND(MX,2)
   WRITE(50,100) MX*DR, TERR(MX), TERR1(MX), TERR2(MX)
-  DO NZ = 1,M
+  DO NZ = 1,N
    WRITE(20,100) MX*DR, NZ*DZ, LP(NZ,MX)
-   WRITE(30,101) MX*DR, NZ*DZ, P(NZ,MX)
-  END DO 
+   WRITE(30,101) MX*DR, NZ*DZ, ABS(P(NZ,MX))
+  END DO
+  WRITE(20,*)
+  WRITE(30,*) 
  END DO
- 100 FORMAT(*(3X,F12.3))
- 101 FORMAT(*(3X,F12.3),3X,F12.3,SP,F12.3,SS,"i")
+ 100 FORMAT(3(3X,F12.3))
+ 101 FORMAT(2(3X,F12.3),3X,F12.3,SP,F12.3,SS,"i")
  PRINT *, "Main CPU time (s) :", TF-TI
  PRINT *, "Source pressure P0 (dB) :", 20*LOG10(ABS(P0))
  !-----------------------------------------------------------
@@ -236,7 +215,7 @@ PROGRAM 2DPE_HT_FD
  !Plotting of results
  CALL SYSTEM('gnuplot -p plot_topo.plt')
  !----------------------------------------------------------
-END PROGRAM 2DPE_HT_FD
+END PROGRAM PE2D_HT_FD
 !-----------------------------------------------------------
 !-------------      EXTERNAL PROCEDURES      ---------------
 !-----------------------------------------------------------

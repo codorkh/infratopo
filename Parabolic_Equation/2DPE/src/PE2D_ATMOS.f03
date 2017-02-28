@@ -1,6 +1,5 @@
-MODULE 2DPE_ATMOS
- USE NRTYPE
- USE NRINT
+MODULE PE2D_ATMOS
+ USE PE2D_TYPE
  IMPLICIT NONE
  !-----------------------------------------------------------
  CONTAINS
@@ -9,15 +8,14 @@ MODULE 2DPE_ATMOS
  IMPLICIT NONE
  REAL(DP), INTENT(IN) :: C0, A, Z
  REAL(DP) :: C
- C(I) = C0+I*DZ*A
- END END FUNCTION ATMLIN
+ C = C0+Z*A
+ END FUNCTION ATMLIN
  !-----------------------------------------------------------
  FUNCTION ATMLOG(C0,A,Z0,Z) RESULT(C)
  IMPLICIT NONE
  REAL(DP), INTENT(IN) :: C0, A, Z0, Z
  REAL(DP) :: C
- INTEGER :: I
- C(I) = C0+A*LOG(1+I*DZ/Z0)
+ C = C0+A*LOG(1+Z/Z0)
  END FUNCTION ATMLOG
  !-----------------------------------------------------------   
  ! SUBROUTINE ATMREAL(N,K,C,NATM)
@@ -37,4 +35,4 @@ MODULE 2DPE_ATMOS
 
  ! END SUBROUTINE ATMREAL
  !-----------------------------------------------------------
-END MODULE 2DPE_ATMOS
+END MODULE PE2D_ATMOS

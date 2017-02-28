@@ -1,7 +1,8 @@
-PROGRAM GF2D_HFR
- USE MATLIB
- USE FDLIB
- USE GROUND
+PROGRAM PE2D_HT_SSF
+ USE PE2D_TYPE
+ USE PE2D_VAR
+ USE PE2D_AUX
+ USE PE2D_GROUND
  IMPLICIT NONE
  !-----------------------------------------------------------
  !Variable statements
@@ -179,4 +180,4 @@ PROGRAM GF2D_HFR
  PRINT *, "Main CPU time (s) :", FINISH-START
  PRINT *, "Source pressure P0 (dB) :", 20*LOG10(Ps)
  !-----------------------------------------------------------
-END PROGRAM GF2D_HFR
+END PROGRAM PE2D_HT_SSF

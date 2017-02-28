@@ -1,0 +1,87 @@
+  !ELSEIF (SP == 1) THEN
+  !Sparse SLATEC
+  !DO MX = 2,M+1
+  ! WRITE(*, *) "Step :", MX-1, "out of", M
+  ! TERR2(MX-1) = (TERR1(MX)-TERR1(MX-1))/Dr
+  ! D = D-im*K0*TERR2(MX-1)*DIAG(ALT)
+  ! WRITE(*, *) "1"
+  ! M1 = I+(Dr/2)*(aa*T+D)+(1/(2*im*K0))*(aa*T+D)
+  ! M2 = I-(Dr/2)*(aa*T+D)+(1/(2*im*K0))*(aa*T+D)
+  ! !MAT = MATMUL(INV(M2),M1)
+  ! WRITE(*, *) "2"
+  ! !MAT_SP = SPCONV(MAT) ! SLOW PROCEDURE !
+  ! CALL SPRSIN_DP(M2,0,SPM2)
+  ! CALL SPRSIN_DP(M1,0,SPM1)
+  ! NELT = MAT_SP%NELT
+  ! ALLOCATE(IMAT(NELT),JMAT(NELT))
+  ! IMAT = MAT_SP%ROW
+  ! JMAT = MAT_SP%COL
+  ! VALMAT = MAT_SP%VAL
+  ! CALL DSMV(N,PHI(1:N,MX-1),PHI(1:N,MX),NELT,IMAT,JMAT,VALMAT,0)
+  ! P(1:N,mx-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
+  !END DO
+
+
+
+! DO MX = 2,M+1
+!  WRITE(*, *) "Step :", MX-1, "out of", M 
+!  TEMP(:,1) = MATMUL(M1,PHI(1:N,MX-1))
+!  !CALL ZGBMV('N',N,N,KL,KU,1.,MB1,KL+KU+1,PHI(1:N,MX-1),1,0.,TEMP(:,1),1)  
+!  WRITE(*, *) ".... Right-hand side multiplied"
+!  !MTEMP = M2
+!  MTEMP(KL+1:2*KL+KU+1,:) = MB2  
+!  !CALL ZGESV(N,1,MTEMP,N,IPIV,TEMP,N,INFO)
+!  CALL ZGBSV(N,KL,KU,1,MTEMP,2*KL+KU+1,IPIV,TEMP(:,1),N,INFO)
+!  !CALL ZGTSV(N,1,MTEMP(2*KL+KU+1,1:N-1),MTEMP(KL+KU+1,1:N),MTEMP(KL+1,2:N),TEMP(:,1),N,INFO)
+!  IF (INFO.NE.0) THEN
+!   WRITE(*,*) INFO
+!   STOP "ERROR : Matrix is singular"
+!  END IF
+!  WRITE(*, *) ".... System solved"
+!  PHI(1:N,MX) = TEMP(:,1)
+!  P(1:N,MX-1) = EXP(IM*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
+! END DO
+ DO MX = 2,M
+
+
+
+! !-----------------------------------------------------------
+! IF (SP == 0) THEN
+! !-----------------------------------------------------------
+!  MAT = MATMUL(INV(M2),M1)
+!  DO MX = 2,M+1
+!   WRITE(*, *) "Step :", MX-1, "out of", M
+!   PHI(1:N,MX) = MATMUL(MAT,PHI(1:N,mx-1))
+!   P(1:N,MX-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
+!  END DO
+! !-----------------------------------------------------------
+! ELSEIF (SP == 1) THEN
+! !-----------------------------------------------------------
+!   MAT_SP = SPCONV(MAT) ! SLOW PROCEDURE !
+!   NELT = MAT_SP%NELT
+!   ALLOCATE(IMAT(NELT),JMAT(NELT))
+!   IMAT = MAT_SP%ROW
+!   JMAT = MAT_SP%COL
+!   VALMAT = MAT_SP%VAL
+!   DO MX = 2,M+1
+!    WRITE(*, *) "Step :", mx-1, "out of", M
+!    CALL DSMV(N,PHI(1:N,MX-1),PHI(1:N,MX),NELT,IMAT,JMAT,VALMAT,0)
+!    P(1:N,mx-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
+!   END DO
+! !-----------------------------------------------------------
+! ELSE
+! !-----------------------------------------------------------
+!  ALLOCATE(SA1(N**3),SA2(N**3),IJA(N**3))
+!  THRESH = 0
+!  TOL = 1.0e-4_dp
+!  CALL SPRSIN_DP(M1,THRESH,SP1)
+!  CALL SPRSIN_DP(M2,THRESH,SP2)
+!  DO MX = 2,M+1
+!   WRITE(*, *) "Step :", mx-1, "out of", M
+!   CALL SPRSAX_DP(SP1,PHI(1:N,MX-1),TEMP)
+!   CALL LINBCG(SP2,TEMP,PHI(1:N,MX),1,TOL,10,ITER,ERR)
+!   P(1:N,mx-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
+!  END DO
+! !-----------------------------------------------------------
+! END IF
+! !-----------------------------------------------------------

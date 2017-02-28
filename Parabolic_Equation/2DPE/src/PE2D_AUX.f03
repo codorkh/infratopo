@@ -1,5 +1,5 @@
-MODULE MATLIB
- USE NRTYPE
+MODULE PE2D_AUX
+ USE PE2D_TYPE
  IMPLICIT NONE
  CONTAINS
  !-----------------------------------------------------------
@@ -32,7 +32,7 @@ MODULE MATLIB
  INTEGER :: I
  DO I = 1,N
   X(I) = 1._DP
- END DO
+ END DO 
  END FUNCTION
  !-----------------------------------------------------------
  FUNCTION DIAG(X,N) RESULT(M)
@@ -103,26 +103,51 @@ MODULE MATLIB
  REAL(DP) :: WORK(SIZE(A,1)), RWORK(2*SIZE(A,1))
  REAL(DP) :: NORM, RCOND, K
  INTEGER(DP) :: N, INFO
+ REAL(DP), EXTERNAL :: ZLANGE, ZLANGB
  N = SIZE(A,1)
  NORM = ZLANGE('I',N,N,A,N,WORK)
  CALL ZGECON('I',N,A,N,NORM,RCOND,CWORK,RWORK,INFO)
  IF (INFO/= 0) THEN
-  STOP "WARNING : Input Matrix is singular !"
+  STOP "[COND] WARNING : Input Matrix is singular !"
  END IF
+ K = 1./RCOND
  END FUNCTION
  !-----------------------------------------------------------
  FUNCTION INTERP1(N,M,X,NDER,XA,YA) RESULT(Y)
- !POLINT : XA(N), YA(N) -> C(N) coefficient of interpolant
- !POLYVL : P(XX) = YY, n-th derivative at XX stored in YP(n)
  IMPLICIT NONE
  INTEGER(I4B), INTENT(IN) :: N, M, NDER
  REAL(DP), DIMENSION(:), INTENT(IN) :: XA, YA, X
  REAL(DP) :: Y(M), YP(M,NDER), WORK(2*N), C(N)
- INTEGER(I4B) :: I, IERR, NDER
+ INTEGER(I4B) :: I, IERR
  CALL POLINT(N,XA,YA,C)
  DO I=1,M
   CALL POLYVL(NDER,X(I),Y(I),YP(I,:),N,XA,C,WORK,IERR)
  END DO
  END FUNCTION
  !-----------------------------------------------------------
-END MODULE
+ SUBROUTINE STOREARRAY(FILENAME,X)
+ IMPLICIT NONE
+ CHARACTER(LEN=*) :: FILENAME
+ REAL(DP), DIMENSION(:,:), ALLOCATABLE :: X
+ LOGICAL :: FILEEXISTS
+ INTEGER :: NLINES, I, REASON
+ INQUIRE(FILE=FILENAME,EXIST=FILEEXISTS)
+ IF (.NOT.FILEEXISTS) THEN
+  STOP "[STOREARRAY] WARNING : file doesn't exist !"
+ END IF
+ OPEN(UNIT=100,FILE=FILENAME,ACTION='READ')
+ READ(100,*,IOSTAT=REASON) NLINES
+ WRITE(*,*) NLINES
+ ALLOCATE(X(NLINES,2))
+ DO I=1,NLINES
+  READ(100,*,IOSTAT=REASON) X(I,:) 
+  IF (REASON.GT.0)  THEN
+   STOP "[STOREARRAY] WARNING : Read error"
+  ELSEIF (REASON.LT.0) THEN
+   EXIT
+  END IF
+ END DO
+ WRITE(*,*) X(1,:), X(20,:), X(30,:)
+ END SUBROUTINE
+ !-----------------------------------------------------------
+END MODULE PE2D_AUX

@@ -1,6 +1,5 @@
-MODULE 2DPE_GROUND
- !Different ground profiles
- USE NRTYPE
+MODULE PE2D_GROUND
+ USE PE2D_TYPE
  IMPLICIT NONE
  !-----------------------------------------------------------
  CONTAINS
@@ -71,11 +70,11 @@ MODULE 2DPE_GROUND
  ENDIF 
  END FUNCTION SLOPE
  !-----------------------------------------------------------
- FUNCTION REALTERR(ITERR) RESULT(TERR)
- IMPLICIT NONE
- INTEGER(I4B), INTENT(IN) :: ITERR
- INTEGER(I4B) :: M, I
- REAL(DP), DIMENSION() ::
- END FUNCTION REALTERR
+ !FUNCTION REALTERR(ITERR) RESULT(TERR)
+ !IMPLICIT NONE
+ !INTEGER(I4B), INTENT(IN) :: ITERR
+ !INTEGER(I4B) :: M, I
+ !REAL(DP), DIMENSION() ::
+ !END FUNCTION REALTERR
  !-----------------------------------------------------------
-END MODULE 2DPE_GROUND
+END MODULE PE2D_GROUND

@@ -1,19 +1,19 @@
 # Modified by Anton Shterenlikht
 
 FC=		gfortran
-FFLAGS=		-g -O3 -fbacktrace -Wall
+FFLAGS=		-g -O3 -fbacktrace -Wall -fcheck=all
 LDFLAGS=	-Wl,-rpath="/usr/local/lib/gcc" -llapack -lblas \
 		-L$(HOME)/slatec/src/static -lslatec -llapack -lblas
 
-MOD_SRC=	nrtype.f03 matlib.f03 ground.f03 param.f03
+MOD_SRC=	PE2D_TYPE.f03 PE2D_VAR.f03 PE2D_GROUND.f03 PE2D_ATMOS.f03 PE2D_AUX.f03
 MOD_MOD=	$(MOD_SRC:.f03=.mod)
 MOD_OBJ=	$(MOD_SRC:.f03=.o)
 CLEAN+=		$(MOD_MOD) $(MOD_OBJ)
 
-PROG_SRC=	PE2D_HTR.f03
+PROG_SRC=	PE2D_HT_FD.f03 #PE2D_HF_FD.f03
 PROG_OBJ=	$(PROG_SRC:.f03=.o)
 PROG_EXE=	$(PROG_SRC:.f03=.x)
-CLEAN+=		$(PROG_OBJ) #$(PROG_EXE)
+CLEAN+=		$(PROG_OBJ) $(PROG_EXE)
 
 .SUFFIXES:	.f03 .mod .o
 

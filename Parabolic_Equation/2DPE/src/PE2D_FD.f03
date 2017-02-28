@@ -1,4 +1,4 @@
-MODULE 2DPE_FD
+MODULE PE2D_FD
  IMPLICIT NONE
  CONTAINS
 !-----------------------------------------------------------
@@ -41,5 +41,4 @@ MODULE 2DPE_FD
   END DO
  END FUNCTION FD
 !-----------------------------------------------------------
-END MODULE 2DPE_FD
-
+END MODULE PE2D_FD

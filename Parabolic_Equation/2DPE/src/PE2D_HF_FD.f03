@@ -1,8 +1,8 @@
-PROGRAM 2DPE_HF_FD
- USE NRTYPE
- USE MATLIB
- USE PARAM
- USE GROUND
+PROGRAM PE2D_HF_FD
+ USE PE2D_TYPE
+ USE PE2D_VAR
+ USE PE2D_AUX
+ USE PE2D_GROUND
  IMPLICIT NONE
  !-----------------------------------------------------------
  !-----------------------------------------------------------
@@ -49,7 +49,7 @@ PROGRAM 2DPE_HF_FD
  WRITE(*,*) "================================================"
  NS = MAX(1,FLOOR(ZS/DZ))
  NABL = FLOOR(HABL/DZ)
- ALPHA = IM/(2.0_DP*K0*DZ**2)
+ A = IM/(2.0_DP*K0*DZ**2)
  KU = 1
  KL = 1
  NDIAG = KU+KL+1
@@ -58,8 +58,8 @@ PROGRAM 2DPE_HF_FD
  !Memory allocation
  ALLOCATE(K(N), DK2(N), ALT(N), PHI(N,M+1), T(N,N), D(N,N), M1(N,N), &
  M2(N,N), I(N,N), P(N,M), LP(N,M), LP2(N,M), LPG(M), LPG2(M), E(N,N), &
- MB2(NDIAG,N), MB1(NDIAG,N), WORK(N), RWORK(2*N), CWORK(2*N), TEMP(N,1), &
- MTEMP(2*KL+KU+1,N), IPIV(N), TEMP(N))
+ MB2(NDIAG,N), MB1(NDIAG,N), TEMP(N,1), M1T(N,N), M2T(N,N), IPIV(N), &
+ GHX(3), MCOND(M,2), MB1T(NDIAG,N), MB2T(KL+NDIAG,N))
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  DO NZ = 1,N
@@ -88,7 +88,6 @@ PROGRAM 2DPE_HF_FD
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Initialization (Dense Matrices)
- !FDW = [1 -2 1]  !Finite Difference Weights
  !---------
  T(:,:) = 0._DP
  DO NZ = 2,N-1 
@@ -100,89 +99,59 @@ PROGRAM 2DPE_HF_FD
  T(1,2) = T(1,2)+1.+SIGMA2
  T(N,N-1) = T(N,N-1)+1.+TAU2
  T(N,N) = T(N,N)-2.+TAU1
- E = DIAG(ALT)
- D = DIAG(DK2)
+ E = DIAG(ALT,N)
+ D = DIAG(DK2,N)
  I = EYE(N)
  !-----------------------------------------------------------
  !System - M1 and M2
  !---------
- BETA1 = 1./(2.*IM*K0)+DR/2.
- BETA2 = 1./(2.*IM*K0)-DR/2.
- M1 = I+ALPHA*BETA1*T+BETA1*D
- M2 = I+ALPHA*BETA2*T+BETA2*D 
- !CALL DENSE2BAND(M1,N,KL,KU,MB1)
+ ALPHA = CMPLX(1.0_DP,0.0_DP,KIND=DP)
+ BETA = CMPLX(0.0_DP,0.0_DP,KIND=DP)
+ BETA1 = 1.0_DP/(2.0_DP*IM*K0)+DR/2.0_DP
+ BETA2 = 1.0_DP/(2.0_DP*IM*K0)-DR/2.0_DP
+ M1 = I+A*BETA1*T+BETA1*D
+ M2 = I+A*BETA2*T+BETA2*D 
+ MB1 = DENSE2BAND(M1,N,KL,KU)
  MB2 = DENSE2BAND(M2,N,KL,KU)
+ MB1T = MB1
+ MB2T(KL+1:KL+NDIAG,:) = MB2
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Forward-marching procedure
  CALL CPU_TIME(TI)
  !-----------------------------------------------------------
  DO MX = 2,M+1
-  WRITE(*, *) "Step :", MX-1, "out of", M 
-  TEMP(:,1) = MATMUL(M1,PHI(1:N,MX-1))
-  !CALL ZGBMV('N',N,N,KL,KU,1.,MB1,KL+KU+1,PHI(1:N,MX-1),1,0.,TEMP(:,1),1)  
-  WRITE(*, *) ".... Right-hand side multiplied"
-  !MTEMP = M2
-  MTEMP(KL+1:2*KL+KU+1,:) = MB2  
-  !CALL ZGESV(N,1,MTEMP,N,IPIV,TEMP,N,INFO)
-  CALL ZGBSV(N,KL,KU,1,MTEMP,2*KL+KU+1,IPIV,TEMP(:,1),N,INFO)
-  !CALL ZGTSV(N,1,MTEMP(2*KL+KU+1,1:N-1),MTEMP(KL+KU+1,1:N),MTEMP(KL+1,2:N),TEMP(:,1),N,INFO)
+  WRITE(*,*) "Step :", MX-1, "out of", M
+  !-------------------------------
+  !Right hand side multiplication
+  !-------------------------------
+  CALL ZGBMV('N',N,N,KL,KU,ALPHA,MB1,KL+KU+1,PHI(1:N,MX-1),1,BETA,TEMP(:,1),1)
+  WRITE(*,*) ".... Right-hand side multiplied"
+  WRITE(*,*)
+  !-------------------------------
+  !System solving
+  !-------------------------------
+  !MTEMP2 = M2
+  !CALL ZGESV(N,1,M2T,N,IPIV,TEMP,N,INFO)                                                         !General matrix form     
+  CALL ZGBSV(N,KL,KU,1,MB2T,2*KL+KU+1,IPIV,TEMP,N,INFO)                                           !Band matrix form
+  !CALL ZGTSV(N,1,MT2T(3,1:N-1),MT2T(2,1:N),MT2T(1,2:N),TEMP(:,1),N,INFO)                         !Tridiagonal matrix form
   IF (INFO.NE.0) THEN
-   WRITE(*,*) INFO
    STOP "ERROR : Matrix is singular"
   END IF
-  WRITE(*, *) ".... System solved"
+  WRITE(*,*) ".... System solved"
+  WRITE(*,*)
   PHI(1:N,MX) = TEMP(:,1)
-  P(1:N,MX-1) = EXP(IM*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
+  P(1:N,MX-1) = EXP(IM*K0*(MX-1)*DR)*PHI(1:N,MX)*(1/SQRT((MX-1)*DR))
  END DO
-! !-----------------------------------------------------------
-! IF (SP == 0) THEN
-! !-----------------------------------------------------------
-!  MAT = MATMUL(INV(M2),M1)
-!  DO MX = 2,M+1
-!   WRITE(*, *) "Step :", MX-1, "out of", M
-!   PHI(1:N,MX) = MATMUL(MAT,PHI(1:N,mx-1))
-!   P(1:N,MX-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
-!  END DO
-! !-----------------------------------------------------------
-! ELSEIF (SP == 1) THEN
-! !-----------------------------------------------------------
-!   MAT_SP = SPCONV(MAT) ! SLOW PROCEDURE !
-!   NELT = MAT_SP%NELT
-!   ALLOCATE(IMAT(NELT),JMAT(NELT))
-!   IMAT = MAT_SP%ROW
-!   JMAT = MAT_SP%COL
-!   VALMAT = MAT_SP%VAL
-!   DO MX = 2,M+1
-!    WRITE(*, *) "Step :", mx-1, "out of", M
-!    CALL DSMV(N,PHI(1:N,MX-1),PHI(1:N,MX),NELT,IMAT,JMAT,VALMAT,0)
-!    P(1:N,mx-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
-!   END DO
-! !-----------------------------------------------------------
-! ELSE
-! !-----------------------------------------------------------
-!  ALLOCATE(SA1(N**3),SA2(N**3),IJA(N**3))
-!  THRESH = 0
-!  TOL = 1.0e-4_dp
-!  CALL SPRSIN_DP(M1,THRESH,SP1)
-!  CALL SPRSIN_DP(M2,THRESH,SP2)
-!  DO MX = 2,M+1
-!   WRITE(*, *) "Step :", mx-1, "out of", M
-!   CALL SPRSAX_DP(SP1,PHI(1:N,MX-1),TEMP)
-!   CALL LINBCG(SP2,TEMP,PHI(1:N,MX),1,TOL,10,ITER,ERR)
-!   P(1:N,mx-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
-!  END DO
-! !-----------------------------------------------------------
-! END IF
-! !-----------------------------------------------------------
+ !-----------------------------------------------------------
  CALL CPU_TIME(TF)
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Transmission loss conversion
- P0 = P(NS,1)
+ P0 = ABS(P(NS,1))
  DO MX = 1,M
   DO NZ = 1,N
-   LP(NZ,MX) = 20.*LOG10(ABS(P(NZ,MX)/P0))
+   LP(NZ,MX) = 20.*LOG10(ABS(P(NZ,MX))/P0)
   END DO
  END DO
  LPG = LP(1,1:M)
@@ -190,45 +159,30 @@ PROGRAM 2DPE_HF_FD
  LPG2 = LP2(1,1:M)
  !-----------------------------------------------------------
  !-----------------------------------------------------------
- !Output
- OPEN(UNIT=10,FILE="results/PE2D_HFR_LPg.dat")
- OPEN(UNIT=20,FILE="results/PE2D_HFR_LP.dat")
- OPEN(UNIT=30,FILE="results/PE2D_HFR_P.dat")
- DO NZ = 1,N
-  WRITE(20, 102) LP(NZ,1:M)
-  WRITE(30, 101) P(NZ,1:M)
- END DO
+  !Output
+ OPEN(UNIT=10,FILE="../results/Flat_LPg.dat")
+ OPEN(UNIT=20,FILE="../results/Flat_LP.dat")
+ OPEN(UNIT=30,FILE="../results/Flat_P.dat")
+ !OPEN(UNIT=40,FILE="../results/Test_Cond.dat")
  DO MX = 1,M
-  WRITE(10, 100) MX*Dr, LPG(MX), LPG2(MX)
+  WRITE(10,100) MX*DR, LPG(MX), LPG2(MX)
+  !WRITE(40,100) COND(MX,1), COND(MX,2)
+  !WRITE(50,100) MX*DR, TERR(MX), TERR1(MX), TERR2(MX)
+  DO NZ = 1,M
+   WRITE(20,100) MX*DR, NZ*DZ, LP(NZ,MX)
+   WRITE(30,101) MX*DR, NZ*DZ, P(NZ,MX)
+  END DO 
  END DO
- 100 FORMAT(3(3X,F12.3))
- 101 FORMAT(3X,F12.3,SP,F12.3,SS,"i")
- 102 FORMAT(100000(3X,F12.3)) 
+ 100 FORMAT(*(3X,F12.3))
+ 101 FORMAT(*(3X,F12.3),3X,F12.3,SP,F12.3,SS,"i")
  PRINT *, "Main CPU time (s) :", TF-TI
  PRINT *, "Source pressure P0 (dB) :", 20*LOG10(ABS(P0))
- !-----------------------------------------------------------
- !-----------------------------------------------------------
- !Checking Matrix conditioning
- NORM = ZLANGE('I',N,N,M1,N,WORK)
- WRITE(*,*) "||M1|| = ", NORM 
- CALL ZGECON('I',N,M1,N,NORM,RCOND,CWORK,RWORK,INFO)
- WRITE(*,*) "K(M1) = ", RCOND, "COND(M1) = ", 1./RCOND
- WRITE(*,*)
- NORM = ZLANGE('I',N,N,M2,N,WORK)
- WRITE(*,*) "||M2|| = ", NORM 
- CALL ZGECON('I',N,M2,N,NORM,RCOND,CWORK,RWORK,INFO)
- WRITE(*,*) "K(M2) = ", RCOND, "COND(M2) = ", 1./RCOND
- WRITE(*,*)
- NORM = ZLANGB('I',N,KL,KU,MB2,KL+KU+1,WORK)
- WRITE(*,*) "||M2|| = ", NORM 
- CALL ZGBCON('I',N,KL,KU,MTEMP,2*KL+KU+1,IPIV,NORM,RCOND,CWORK,RWORK,INFO)
- WRITE(*,*) "K(M2) = ", RCOND, "COND(M2) = ", 1./RCOND
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Plotting of results
  CALL SYSTEM('gnuplot -p plot_flat.plt')
  !----------------------------------------------------------
-END PROGRAM 2DPE_HF_FD
+END PROGRAM PE2D_HF_FD
 !-----------------------------------------------------------
 !-------------      EXTERNAL PROCEDURES      ---------------
 !-----------------------------------------------------------
