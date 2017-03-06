@@ -159,29 +159,29 @@ PROGRAM PE2D_HF_FD
  LPG2 = LP2(1,1:M)
  !-----------------------------------------------------------
  !-----------------------------------------------------------
-  !Output
- OPEN(UNIT=10,FILE="../results/Flat_LPg.dat")
- OPEN(UNIT=20,FILE="../results/Flat_LP.dat")
- OPEN(UNIT=30,FILE="../results/Flat_P.dat")
- !OPEN(UNIT=40,FILE="../results/Test_Cond.dat")
- DO MX = 1,M
-  WRITE(10,100) MX*DR, LPG(MX), LPG2(MX)
-  !WRITE(40,100) COND(MX,1), COND(MX,2)
-  !WRITE(50,100) MX*DR, TERR(MX), TERR1(MX), TERR2(MX)
-  DO NZ = 1,M
-   WRITE(20,100) MX*DR, NZ*DZ, LP(NZ,MX)
-   WRITE(30,101) MX*DR, NZ*DZ, P(NZ,MX)
-  END DO 
- END DO
- 100 FORMAT(*(3X,F12.3))
- 101 FORMAT(*(3X,F12.3),3X,F12.3,SP,F12.3,SS,"i")
+ IF (OUTPUT.EQ."Y") THEN
+ !Output
+  OPEN(UNIT=10,FILE="../results/Flat_LPg.dat")
+  OPEN(UNIT=20,FILE="../results/Flat_LP.dat")
+  OPEN(UNIT=30,FILE="../results/Flat_P.dat")
+  DO MX = 1,M
+   WRITE(10,100) MX*DR, LPG(MX), LPG2(MX)
+   DO NZ = 1,N
+    WRITE(20,100) MX*DR, NZ*DZ+TERR(MX), LP(NZ,MX)
+    WRITE(30,101) MX*DR, NZ*DZ+TERR(MX), ABS(P(NZ,MX))
+   END DO
+   WRITE(20,*)
+   WRITE(30,*) 
+  END DO
+  100 FORMAT(3(3X,F12.3))
+  101 FORMAT(2(3X,F12.3),3X,F12.3,SP,F12.3,SS,"i")
+  !Plotting of results
+  CALL SYSTEM('gnuplot -p plot_flat.plt')
+ END IF
  PRINT *, "Main CPU time (s) :", TF-TI
  PRINT *, "Source pressure P0 (dB) :", 20*LOG10(ABS(P0))
  !-----------------------------------------------------------
  !-----------------------------------------------------------
- !Plotting of results
- CALL SYSTEM('gnuplot -p plot_flat.plt')
- !----------------------------------------------------------
 END PROGRAM PE2D_HF_FD
 !-----------------------------------------------------------
 !-------------      EXTERNAL PROCEDURES      ---------------

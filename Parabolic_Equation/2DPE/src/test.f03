@@ -1,0 +1,44 @@
+PROGRAM TEST
+ USE PE2D_TYPE
+ USE PE2D_AUX
+ USE PE2D_GROUND
+ USE PE2D_ATMOS
+ IMPLICIT NONE
+ INTEGER(I4B) :: I, N, M, NDER
+ CHARACTER(LEN=100) :: FILENAME
+ REAL(DP), DIMENSION(:,:), ALLOCATABLE :: S, YP
+ REAL(DP), DIMENSION(:), ALLOCATABLE :: X, XA, YA
+ REAL(DP) :: L, DR
+ FILENAME='../ground/alp_2d.dat'
+ CALL STOREARRAY(FILENAME,S,N,2)
+ WRITE(*,*) "NLINES = ", N
+ !CALL UNIQUE(S(:,1),SCNT,SUNI,SDUP,INFO)
+ !L = 1.0_DP
+ !N = 10
+ !DR = L/N
+ !ALLOCATE(XA(N), YA(N))
+ !XA = (/ (DR*I, I=1,N) /)
+ !YA = (/ (XA(I)**2, I=1,N) /)
+ XA = S(:,1)
+ YA = S(:,2)
+ OPEN(UNIT=999,FILE='test.dat')
+ OPEN(UNIT=998,FILE='test2.dat')
+ DO I=1,N
+  WRITE(999,100) XA(I), YA(I)
+ END DO
+ !--------
+ !Variables from main
+ NDER = 2
+ M = 3000
+ L = XA(N)
+ !M = 20
+ DR = L/M
+ ALLOCATE(X(M),YP(M,0:NDER))
+ X = (/ (DR*I, I=1,M) /)
+ YP = INTERP1(N,X,NDER,XA,YA)
+ DO I=1,M
+  WRITE(998,101) X(I), YP(I,:)  
+ END DO
+ 100 FORMAT(2(F16.5,X))
+ 101 FORMAT(4(F16.5,X))
+END PROGRAM

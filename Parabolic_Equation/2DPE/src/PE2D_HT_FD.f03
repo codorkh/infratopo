@@ -26,10 +26,13 @@ PROGRAM PE2D_HT_FD
  WRITE(*,*) ""
  WRITE(*,*) "================================================"
  WRITE(*,*) ""
- WRITE(*,*) "Enter inputs L, f, zs, As, angle"
+ WRITE(*,*) "Enter inputs L, f, zs, As, angle, wide-angle"
  WRITE(*,*) ""
  READ *, L, F, ZS, ABL, ANGLE
  WRITE(*,*) ""
+ WRITE(*,*) "Store output ? (Y or N)"
+ WRITE(*,*) ""
+ READ *, OUTPUT
  !-----------------------------------------------------------
  !----------------------------------------------------------
  C0 = 343.0_DP
@@ -53,6 +56,7 @@ PROGRAM PE2D_HT_FD
  KU = 1
  KL = 1
  NDIAG = KU+KL+1
+ WIDE = 0
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Memory allocation
@@ -127,8 +131,17 @@ PROGRAM PE2D_HT_FD
  !---------
  ALPHA = CMPLX(1.0_DP,0.0_DP,KIND=DP)
  BETA = CMPLX(0.0_DP,0.0_DP,KIND=DP)
- BETA1 = 1.0_DP/(2.0_DP*IM*K0)+DR/2.0_DP
- BETA2 = 1.0_DP/(2.0_DP*IM*K0)-DR/2.0_DP
+ SELECT CASE (WIDE)
+  CASE(0)
+   BETA1 = DR/2.0_DP
+   BETA2 = -DR/2.0_DP
+  CASE(1)
+   BETA1 = 1.0_DP/(2.0_DP*IM*K0)+DR/2.0_DP
+   BETA2 = 1.0_DP/(2.0_DP*IM*K0)-DR/2.0_DP
+  CASE DEFAULT
+   STOP "[MAIN] : Enter valid wide-angle case"
+ END SELECT
+ WRITE(*,*) "Wide-angle order : ", WIDE 
  M1 = I+A*BETA1*T+BETA1*D
  M2 = I+A*BETA2*T+BETA2*D 
  MB1 = DENSE2BAND(M1,N,KL,KU)
@@ -189,31 +202,31 @@ PROGRAM PE2D_HT_FD
  LPG2 = LP2(1,1:M)
  !-----------------------------------------------------------
  !-----------------------------------------------------------
+ IF (OUTPUT.EQ."Y") THEN
  !Output
- OPEN(UNIT=10,FILE="../results/Topo_LPg.dat")
- OPEN(UNIT=20,FILE="../results/Topo_LP.dat")
- OPEN(UNIT=30,FILE="../results/Topo_P.dat")
- !OPEN(UNIT=40,FILE="../results/Test_Cond.dat")
- OPEN(UNIT=50,FILE="../results/Topo.dat")
- DO MX = 1,M
-  WRITE(10,100) MX*DR, LPG(MX), LPG2(MX)
-  !WRITE(40,100) COND(MX,1), COND(MX,2)
-  WRITE(50,100) MX*DR, TERR(MX), TERR1(MX), TERR2(MX)
-  DO NZ = 1,N
-   WRITE(20,100) MX*DR, NZ*DZ, LP(NZ,MX)
-   WRITE(30,101) MX*DR, NZ*DZ, ABS(P(NZ,MX))
+  OPEN(UNIT=10,FILE="../results/Topo_LPg.dat")
+  OPEN(UNIT=20,FILE="../results/Topo_LP.dat")
+  OPEN(UNIT=30,FILE="../results/Topo_P.dat")
+  OPEN(UNIT=50,FILE="../results/Topo.dat")
+  DO MX = 1,M
+   WRITE(10,100) MX*DR, LPG(MX), LPG2(MX)
+   WRITE(50,100) MX*DR, TERR(MX), TERR1(MX), TERR2(MX)
+   DO NZ = 1,N
+    WRITE(20,100) MX*DR, NZ*DZ+TERR(MX), LP(NZ,MX)
+    WRITE(30,101) MX*DR, NZ*DZ+TERR(MX), ABS(P(NZ,MX))
+   END DO
+   WRITE(20,*)
+   WRITE(30,*) 
   END DO
-  WRITE(20,*)
-  WRITE(30,*) 
- END DO
- 100 FORMAT(3(3X,F12.3))
- 101 FORMAT(2(3X,F12.3),3X,F12.3,SP,F12.3,SS,"i")
+  100 FORMAT(3(3X,F12.3))
+  101 FORMAT(2(3X,F12.3),3X,F12.3,SP,F12.3,SS,"i")
+  !Plotting of results
+  CALL SYSTEM('gnuplot -p plot_topo.plt')
+  CALL SYSTEM('gnuplot -p plot_topo2.plt')
+ END IF
  PRINT *, "Main CPU time (s) :", TF-TI
  PRINT *, "Source pressure P0 (dB) :", 20*LOG10(ABS(P0))
  !-----------------------------------------------------------
- !-----------------------------------------------------------
- !Plotting of results
- CALL SYSTEM('gnuplot -p plot_topo.plt')
  !----------------------------------------------------------
 END PROGRAM PE2D_HT_FD
 !-----------------------------------------------------------
