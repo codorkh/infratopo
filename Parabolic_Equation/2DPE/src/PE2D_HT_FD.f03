@@ -26,7 +26,7 @@ PROGRAM PE2D_HT_FD
  WRITE(*,*) ""
  WRITE(*,*) "================================================"
  WRITE(*,*) ""
- WRITE(*,*) "Enter inputs L, f, zs, As, angle, wide-angle"
+ WRITE(*,*) "Enter inputs L, f, zs, As, angle"
  WRITE(*,*) ""
  READ *, L, F, ZS, ABL, ANGLE
  WRITE(*,*) ""
