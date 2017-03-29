@@ -10,8 +10,8 @@ MODULE PE2D_GROUND
  REAL(DP), INTENT(IN) :: H0, x0, s, x
  REAL(DP) :: GH(3)
  GH(1) = H0*EXP(-(X-X0)**2/(2*S**2))
- GH(2) = -2*H0*EXP(-(X-X0)**2/S**2)*(X-X0)/S**2
- GH(3) = 2*H0*EXP(-(X-X0)**2/S**2)*(X-X0)**2/S**4-2*H0*EXP(-(X-X0)**2/S**2)/S**2
+ GH(2) = -(H0/S**2)*(X-X0)*EXP(-(X-X0)**2/(2*S**2))
+ GH(3) = (H0/S**2)*((X-X0)**2/(S**2)-1)*EXP(-(X-X0)**2/(2*S**2))
  END FUNCTION GHILL
  !-----------------------------------------------------------
  !Symmetric Triangular Hill

@@ -12,6 +12,7 @@ PROGRAM PE2D_HT_FD
  WRITE(*,*) "================================================"
  WRITE(*,*) ""
  WRITE(*,*) "University of Bristol"
+ WRITE(*,*) "Mech. Eng. Department"
  WRITE(*,*) "Aerodynamics and Aeroacoustics Research Group"
  WRITE(*,*) ""
  WRITE(*,*) "Codor Khodr, July 2016"
@@ -63,8 +64,8 @@ PROGRAM PE2D_HT_FD
  ALLOCATE(K(N), DK2(N), ALT(N), PHI(N,M+1), T(N,N), D(N,N), M1(N,N), &
  M2(N,N), I(N,N), P(N,M), LP(N,M), LP2(N,M), LPG(M), LPG2(M), E(N,N), &
  MB2(NDIAG,N), MB1(NDIAG,N), TEMP(N,1), M1T(N,N), M2T(N,N), IPIV(N), &
- TERR(1:M+1), TERR1(1:M+1), TERR2(1:M), LIN(0:M), GHX(3), MCOND(M,2), &
- MB1T(NDIAG,N), MB2T(KL+NDIAG,N))
+ TERR(-1:M+2), TERR1(-1:M+2), TERR2(-1:M+2), LIN(-2:M+2), GHX(3), MCOND(M,2), &
+ MB1T(NDIAG,N), MB2T(KL+NDIAG,N), X(-1:M+2))
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Atmosphere density and wave velocity
@@ -84,18 +85,21 @@ PROGRAM PE2D_HT_FD
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Terrain Boundary condition
- LIN(0) = 0
+ LIN(-2) = 0
  THETA = ANGLE*PI/180.0_DP
  X0 = L/2.0_DP
  S = L/5.0_DP
  H0 = SQRT(EXP(1.0_DP)/2.0_DP)*S*ATAN(THETA)
- DO MX = 1,M
+ DO MX = -1,M+2
   GHX = GHILL(H0,X0,S,MX*DR)
   TERR(MX) = GHX(1)
-  TERR1(MX) = GHX(2)
-  TERR2(MX) = GHX(3)
+  !TERR1(MX) = GHX(2)
+  !TERR2(MX) = GHX(3)
+  X(MX) = MX*DR
   LIN(MX) = LIN(MX-1)+(1+TERR1(MX))*DR
  END DO
+ TERR1 = DIFF1(X,TERR)
+ TERR2 = DIFF2(X,TERR)
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Starting field
@@ -157,7 +161,7 @@ PROGRAM PE2D_HT_FD
   !Matrix updating
   !-------------------------------
   !TERR1(MX-1) = (TERR(MX)-TERR(MX-1))/DR
-  !TERR2(MX-1) = (TERR1(MX)-TERR1(MX-1))/DR       !Varying coefficient to be injected...  
+  !TERR2(MX-1) = (TERR1(MX)-TERR1(MX-1))/DR       !Varying coefficient to be injected...
   MB1T = MB1
   MB1T(KU+1,:) = MB1(KU+1,:)-BETA1*IM*K0*TERR2(MX-1)*ALT
   MB2T(KL+1:KL+NDIAG,:) = MB2
