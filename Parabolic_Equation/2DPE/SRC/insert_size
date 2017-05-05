@@ -1,0 +1,8 @@
+file=$1
+nlines=$(wc -l < "$file")
+TAB=$'\t'
+ncols=$(awk '{print NF}' $file | sort -nu | tail -n 1)
+export nlines
+export ncols
+sed -i "1i $nlines${TAB}$ncols" "$file"
+echo $nlines, $ncols

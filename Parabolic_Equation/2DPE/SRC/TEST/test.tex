@@ -1,0 +1,159 @@
+% GNUPLOT: LaTeX picture with Postscript
+\begingroup
+  \makeatletter
+  \providecommand\color[2][]{%
+    \GenericError{(gnuplot) \space\space\space\@spaces}{%
+      Package color not loaded in conjunction with
+      terminal option `colourtext'%
+    }{See the gnuplot documentation for explanation.%
+    }{Either use 'blacktext' in gnuplot or load the package
+      color.sty in LaTeX.}%
+    \renewcommand\color[2][]{}%
+  }%
+  \providecommand\includegraphics[2][]{%
+    \GenericError{(gnuplot) \space\space\space\@spaces}{%
+      Package graphicx or graphics not loaded%
+    }{See the gnuplot documentation for explanation.%
+    }{The gnuplot epslatex terminal needs graphicx.sty or graphics.sty.}%
+    \renewcommand\includegraphics[2][]{}%
+  }%
+  \providecommand\rotatebox[2]{#2}%
+  \@ifundefined{ifGPcolor}{%
+    \newif\ifGPcolor
+    \GPcolorfalse
+  }{}%
+  \@ifundefined{ifGPblacktext}{%
+    \newif\ifGPblacktext
+    \GPblacktexttrue
+  }{}%
+  % define a \g@addto@macro without @ in the name:
+  \let\gplgaddtomacro\g@addto@macro
+  % define empty templates for all commands taking text:
+  \gdef\gplbacktext{}%
+  \gdef\gplfronttext{}%
+  \makeatother
+  \ifGPblacktext
+    % no textcolor at all
+    \def\colorrgb#1{}%
+    \def\colorgray#1{}%
+  \else
+    % gray or color?
+    \ifGPcolor
+      \def\colorrgb#1{\color[rgb]{#1}}%
+      \def\colorgray#1{\color[gray]{#1}}%
+      \expandafter\def\csname LTw\endcsname{\color{white}}%
+      \expandafter\def\csname LTb\endcsname{\color{black}}%
+      \expandafter\def\csname LTa\endcsname{\color{black}}%
+      \expandafter\def\csname LT0\endcsname{\color[rgb]{1,0,0}}%
+      \expandafter\def\csname LT1\endcsname{\color[rgb]{0,1,0}}%
+      \expandafter\def\csname LT2\endcsname{\color[rgb]{0,0,1}}%
+      \expandafter\def\csname LT3\endcsname{\color[rgb]{1,0,1}}%
+      \expandafter\def\csname LT4\endcsname{\color[rgb]{0,1,1}}%
+      \expandafter\def\csname LT5\endcsname{\color[rgb]{1,1,0}}%
+      \expandafter\def\csname LT6\endcsname{\color[rgb]{0,0,0}}%
+      \expandafter\def\csname LT7\endcsname{\color[rgb]{1,0.3,0}}%
+      \expandafter\def\csname LT8\endcsname{\color[rgb]{0.5,0.5,0.5}}%
+    \else
+      % gray
+      \def\colorrgb#1{\color{black}}%
+      \def\colorgray#1{\color[gray]{#1}}%
+      \expandafter\def\csname LTw\endcsname{\color{white}}%
+      \expandafter\def\csname LTb\endcsname{\color{black}}%
+      \expandafter\def\csname LTa\endcsname{\color{black}}%
+      \expandafter\def\csname LT0\endcsname{\color{black}}%
+      \expandafter\def\csname LT1\endcsname{\color{black}}%
+      \expandafter\def\csname LT2\endcsname{\color{black}}%
+      \expandafter\def\csname LT3\endcsname{\color{black}}%
+      \expandafter\def\csname LT4\endcsname{\color{black}}%
+      \expandafter\def\csname LT5\endcsname{\color{black}}%
+      \expandafter\def\csname LT6\endcsname{\color{black}}%
+      \expandafter\def\csname LT7\endcsname{\color{black}}%
+      \expandafter\def\csname LT8\endcsname{\color{black}}%
+    \fi
+  \fi
+  \setlength{\unitlength}{0.0500bp}%
+  \begin{picture}(7200.00,5040.00)%
+    \gplgaddtomacro\gplbacktext{%
+      \csname LTb\endcsname%
+      \put(946,3224){\makebox(0,0)[r]{\strut{}-100}}%
+      \put(946,3340){\makebox(0,0)[r]{\strut{}-90}}%
+      \put(946,3455){\makebox(0,0)[r]{\strut{}-80}}%
+      \put(946,3571){\makebox(0,0)[r]{\strut{}-70}}%
+      \put(946,3686){\makebox(0,0)[r]{\strut{}-60}}%
+      \put(946,3802){\makebox(0,0)[r]{\strut{}-50}}%
+      \put(946,3917){\makebox(0,0)[r]{\strut{}-40}}%
+      \put(946,4033){\makebox(0,0)[r]{\strut{}-30}}%
+      \put(946,4148){\makebox(0,0)[r]{\strut{}-20}}%
+      \put(946,4264){\makebox(0,0)[r]{\strut{}-10}}%
+      \put(946,4379){\makebox(0,0)[r]{\strut{}0}}%
+      \put(1078,3004){\makebox(0,0){\strut{}0}}%
+      \put(1536,3004){\makebox(0,0){\strut{}500}}%
+      \put(1994,3004){\makebox(0,0){\strut{}1000}}%
+      \put(2452,3004){\makebox(0,0){\strut{}1500}}%
+      \put(2910,3004){\makebox(0,0){\strut{}2000}}%
+      \put(3369,3004){\makebox(0,0){\strut{}2500}}%
+      \put(3827,3004){\makebox(0,0){\strut{}3000}}%
+      \put(4285,3004){\makebox(0,0){\strut{}3500}}%
+      \put(4743,3004){\makebox(0,0){\strut{}4000}}%
+      \put(5201,3004){\makebox(0,0){\strut{}4500}}%
+      \put(5659,3004){\makebox(0,0){\strut{}5000}}%
+      \put(5791,3224){\makebox(0,0)[l]{\strut{} 0}}%
+      \put(5791,3455){\makebox(0,0)[l]{\strut{} 400}}%
+      \put(5791,3686){\makebox(0,0)[l]{\strut{} 800}}%
+      \put(5791,3917){\makebox(0,0)[l]{\strut{} 1200}}%
+      \put(5791,4148){\makebox(0,0)[l]{\strut{} 1600}}%
+      \put(5791,4379){\makebox(0,0)[l]{\strut{} 2000}}%
+      \put(176,3801){\rotatebox{-270}{\makebox(0,0){\strut{}LP (dB)}}}%
+      \put(6692,3801){\rotatebox{-270}{\makebox(0,0){\strut{}H (m)}}}%
+      \put(3368,2674){\makebox(0,0){\strut{}r (m)}}%
+      \put(3368,4709){\makebox(0,0){\strut{}Sound Pressure Level LP(x,0)}}%
+    }%
+    \gplgaddtomacro\gplfronttext{%
+      \csname LTb\endcsname%
+      \put(4672,4206){\makebox(0,0)[r]{\strut{}LP(x,0)}}%
+      \csname LTb\endcsname%
+      \put(4672,3986){\makebox(0,0)[r]{\strut{}LPrms(x,0)}}%
+      \csname LTb\endcsname%
+      \put(4672,3766){\makebox(0,0)[r]{\strut{}Terrain}}%
+    }%
+    \gplgaddtomacro\gplbacktext{%
+      \csname LTb\endcsname%
+      \put(3600,2116){\makebox(0,0){\strut{}Sound Pressure Level field LP(x,z)}}%
+    }%
+    \gplgaddtomacro\gplfronttext{%
+      \put(5175,1393){\makebox(0,0)[r]{\strut{}file using 1:2:3}}%
+      \csname LTb\endcsname%
+      \put(1170,448){\makebox(0,0){\strut{}0}}%
+      \put(1656,448){\makebox(0,0){\strut{}500}}%
+      \put(2142,448){\makebox(0,0){\strut{}1000}}%
+      \put(2628,448){\makebox(0,0){\strut{}1500}}%
+      \put(3114,448){\makebox(0,0){\strut{}2000}}%
+      \put(3600,448){\makebox(0,0){\strut{}2500}}%
+      \put(4086,448){\makebox(0,0){\strut{}3000}}%
+      \put(4572,448){\makebox(0,0){\strut{}3500}}%
+      \put(5058,448){\makebox(0,0){\strut{}4000}}%
+      \put(5544,448){\makebox(0,0){\strut{}4500}}%
+      \put(6030,448){\makebox(0,0){\strut{}5000}}%
+      \put(3600,118){\makebox(0,0){\strut{}r (m)}}%
+      \put(998,734){\makebox(0,0)[r]{\strut{}0}}%
+      \put(998,910){\makebox(0,0)[r]{\strut{}500}}%
+      \put(998,1085){\makebox(0,0)[r]{\strut{}1000}}%
+      \put(998,1260){\makebox(0,0)[r]{\strut{}1500}}%
+      \put(998,1435){\makebox(0,0)[r]{\strut{}2000}}%
+      \put(998,1610){\makebox(0,0)[r]{\strut{}2500}}%
+      \put(998,1786){\makebox(0,0)[r]{\strut{}3000}}%
+      \put(404,1260){\rotatebox{-270}{\makebox(0,0){\strut{}z (m)}}}%
+      \put(6527,734){\makebox(0,0)[l]{\strut{}-120}}%
+      \put(6527,909){\makebox(0,0)[l]{\strut{}-100}}%
+      \put(6527,1084){\makebox(0,0)[l]{\strut{}-80}}%
+      \put(6527,1260){\makebox(0,0)[l]{\strut{}-60}}%
+      \put(6527,1435){\makebox(0,0)[l]{\strut{}-40}}%
+      \put(6527,1610){\makebox(0,0)[l]{\strut{}-20}}%
+      \put(6527,1786){\makebox(0,0)[l]{\strut{} 0}}%
+      \put(7121,1260){\rotatebox{-270}{\makebox(0,0){\strut{}LP (dB)}}}%
+    }%
+    \gplbacktext
+    \put(0,0){\includegraphics{test}}%
+    \gplfronttext
+  \end{picture}%
+\endgroup

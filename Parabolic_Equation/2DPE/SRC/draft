@@ -1,0 +1,156 @@
+  !ELSEIF (SP == 1) THEN
+  !Sparse SLATEC
+  !DO MX = 2,M+1
+  ! WRITE(*, *) "Step :", MX-1, "out of", M
+  ! TERR2(MX-1) = (TERR1(MX)-TERR1(MX-1))/Dr
+  ! D = D-im*K0*TERR2(MX-1)*DIAG(ALT)
+  ! WRITE(*, *) "1"
+  ! M1 = I+(Dr/2)*(aa*T+D)+(1/(2*im*K0))*(aa*T+D)
+  ! M2 = I-(Dr/2)*(aa*T+D)+(1/(2*im*K0))*(aa*T+D)
+  ! !MAT = MATMUL(INV(M2),M1)
+  ! WRITE(*, *) "2"
+  ! !MAT_SP = SPCONV(MAT) ! SLOW PROCEDURE !
+  ! CALL SPRSIN_DP(M2,0,SPM2)
+  ! CALL SPRSIN_DP(M1,0,SPM1)
+  ! NELT = MAT_SP%NELT
+  ! ALLOCATE(IMAT(NELT),JMAT(NELT))
+  ! IMAT = MAT_SP%ROW
+  ! JMAT = MAT_SP%COL
+  ! VALMAT = MAT_SP%VAL
+  ! CALL DSMV(N,PHI(1:N,MX-1),PHI(1:N,MX),NELT,IMAT,JMAT,VALMAT,0)
+  ! P(1:N,mx-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
+  !END DO
+
+
+
+! DO MX = 2,M+1
+!  WRITE(*, *) "Step :", MX-1, "out of", M 
+!  TEMP(:,1) = MATMUL(M1,PHI(1:N,MX-1))
+!  !CALL ZGBMV('N',N,N,KL,KU,1.,MB1,KL+KU+1,PHI(1:N,MX-1),1,0.,TEMP(:,1),1)  
+!  WRITE(*, *) ".... Right-hand side multiplied"
+!  !MTEMP = M2
+!  MTEMP(KL+1:2*KL+KU+1,:) = MB2  
+!  !CALL ZGESV(N,1,MTEMP,N,IPIV,TEMP,N,INFO)
+!  CALL ZGBSV(N,KL,KU,1,MTEMP,2*KL+KU+1,IPIV,TEMP(:,1),N,INFO)
+!  !CALL ZGTSV(N,1,MTEMP(2*KL+KU+1,1:N-1),MTEMP(KL+KU+1,1:N),MTEMP(KL+1,2:N),TEMP(:,1),N,INFO)
+!  IF (INFO.NE.0) THEN
+!   WRITE(*,*) INFO
+!   STOP "ERROR : Matrix is singular"
+!  END IF
+!  WRITE(*, *) ".... System solved"
+!  PHI(1:N,MX) = TEMP(:,1)
+!  P(1:N,MX-1) = EXP(IM*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
+! END DO
+ DO MX = 2,M
+
+
+
+! !-----------------------------------------------------------
+! IF (SP == 0) THEN
+! !-----------------------------------------------------------
+!  MAT = MATMUL(INV(M2),M1)
+!  DO MX = 2,M+1
+!   WRITE(*, *) "Step :", MX-1, "out of", M
+!   PHI(1:N,MX) = MATMUL(MAT,PHI(1:N,mx-1))
+!   P(1:N,MX-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
+!  END DO
+! !-----------------------------------------------------------
+! ELSEIF (SP == 1) THEN
+! !-----------------------------------------------------------
+!   MAT_SP = SPCONV(MAT) ! SLOW PROCEDURE !
+!   NELT = MAT_SP%NELT
+!   ALLOCATE(IMAT(NELT),JMAT(NELT))
+!   IMAT = MAT_SP%ROW
+!   JMAT = MAT_SP%COL
+!   VALMAT = MAT_SP%VAL
+!   DO MX = 2,M+1
+!    WRITE(*, *) "Step :", mx-1, "out of", M
+!    CALL DSMV(N,PHI(1:N,MX-1),PHI(1:N,MX),NELT,IMAT,JMAT,VALMAT,0)
+!    P(1:N,mx-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
+!   END DO
+! !-----------------------------------------------------------
+! ELSE
+! !-----------------------------------------------------------
+!  ALLOCATE(SA1(N**3),SA2(N**3),IJA(N**3))
+!  THRESH = 0
+!  TOL = 1.0e-4_dp
+!  CALL SPRSIN_DP(M1,THRESH,SP1)
+!  CALL SPRSIN_DP(M2,THRESH,SP2)
+!  DO MX = 2,M+1
+!   WRITE(*, *) "Step :", mx-1, "out of", M
+!   CALL SPRSAX_DP(SP1,PHI(1:N,MX-1),TEMP)
+!   CALL LINBCG(SP2,TEMP,PHI(1:N,MX),1,TOL,10,ITER,ERR)
+!   P(1:N,mx-1) = EXP(im*K0*(MX-1)*Dr)*PHI(1:N,MX)*(1/SQRT((MX-1)*Dr))
+!  END DO
+! !-----------------------------------------------------------
+! END IF
+! !-----------------------------------------------------------
+
+
+
+
+
+!REAL(DP) FUNCTION INTERP1D_SINGLE_DP(X1,Y1,X2,Y2,XVAL) RESULT(YVAL)
+! REAL(DP),INTENT(IN) :: X1,Y1,X2,Y2,XVAL
+! REAL(DP) :: FRAC
+! FRAC = ( XVAL - X1 ) / ( X2 - X1 )
+! YVAL = Y1 + FRAC * ( Y2 - Y1 )
+!END FUNCTION INTERP1D_SINGLE_DP
+
+!INTERFACE
+! REAL(DP) FUNCTION F_SINGLE(X1,Y1,X2,Y2,XVAL)
+!  IMPORT :: DP
+!  IMPLICIT NONE
+!  REAL(DP),INTENT(IN) :: X1,Y1,X2,Y2,XVAL
+! END FUNCTION F_SINGLE
+!END INTERFACE
+
+FUNCTION INTERP1(N,XA,YA,XVAL,BOUNDS_ERROR,FILL_VALUE) RESULT(YVAL)
+ IMPLICIT NONE
+ INTEGER(I4B), INTENT(IN) :: N				!THE SIZE OF THE ARRAY
+ REAL(DP), DIMENSION(:), INTENT(IN) :: XA, YA, XVAL	!THE X AND Y ARRAYS, XVAL : THE VALUE AT WHICH TO INTERPOLATE Y
+ REAL(DP), INTENT(IN), OPTIONAL :: FILL_VALUE		!VALUE FOR OUT OF BOUNDS IF BOUNDS_ERROR IS .FALSE.
+ LOGICAL, INTENT(IN), OPTIONAL :: BOUNDS_ERROR		!WHETHER TO RAISE AN OUT OF BOUNDS ERROR	 
+ REAL(DP), DIMENSION(SIZE(XVAL)) :: YVAL 
+ REAL(DP) :: FILL_VALUE_TMP
+ INTEGER :: I, IPOS, M					
+ LOGICAL :: BOUNDS_ERROR_TMP
+ M = SIZE(XVAL)
+ IF (.NOT.(SIZE(XA).EQ.SIZE(YA))) THEN
+  STOP "[INTERP1] ERROR : XA and YA=F(XA) should be same size !"
+ END IF
+ DO I=1,M
+  IF(PRESENT(BOUNDS_ERROR)) THEN
+   BOUNDS_ERROR_TMP = BOUNDS_ERROR
+  ELSE
+   BOUNDS_ERROR_TMP = .TRUE.
+  END IF
+  IF(.NOT.BOUNDS_ERROR_TMP) THEN
+   IF(PRESENT(FILL_VALUE)) THEN
+    FILL_VALUE_TMP = FILL_VALUE
+   ELSE
+    FILL_VALUE_TMP = 0.0_DP
+   END IF
+  END IF
+  CALL LOCATE(XA,N,XVAL,IPOS)
+  IF(IPOS.EQ.-1) THEN
+   IF(BOUNDS_ERROR_TMP) THEN
+    WRITE(0,'("ERROR: INTERPOLATION OUT OF BOUNDS : ",ES11.4," IN [",ES11.4,":",ES11.4,"]")') XVAL(I), X(1), X(N)
+    STOP
+   ELSE
+    YVAL(I) = FILL_VALUE_TMP
+    RETURN
+   END IF
+  END IF
+  IF((IPOS.LT.N).AND.(IPOS.GT.0)) THEN
+   YVAL(I) = YA(IPOS)+(XVAL(I)-XA(IPOS))*(YA(IPOS+1)-YA(IPOS))/(XA(IPOS+1)-XA(IPOS))
+  ELSE IF(IPOS.EQ.N) THEN
+   YVAL(I) = YA(N)
+  ELSE IF(IPOS.EQ.0) THEN
+   YVAL(I) = YA(1)
+  ELSE
+   WRITE(0,'("ERROR: UNEXPECTED VALUE OF IPOS : ",I0)') IPOS
+   STOP
+  END IF
+ END DO
+END FUNCTION INTERP1

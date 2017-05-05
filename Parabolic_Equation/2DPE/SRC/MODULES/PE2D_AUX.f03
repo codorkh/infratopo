@@ -1,0 +1,456 @@
+MODULE PE2D_AUX
+ USE PE2D_TYPE
+ IMPLICIT NONE
+ CONTAINS
+ !-----------------------------------------------------------
+ SUBROUTINE FLIP(X)
+ IMPLICIT NONE
+ COMPLEX(DP), DIMENSION(:) :: X
+ X = X(UBOUND(X,1):LBOUND(X,1):-1)
+ END SUBROUTINE
+ !-----------------------------------------------------------
+ SUBROUTINE COPY(ARRAY,RESULT)
+ INTEGER(I4B), DIMENSION(:) :: ARRAY
+ INTEGER(I4B), DIMENSION(:), ALLOCATABLE :: RESULT
+ ALLOCATE(RESULT(1:SIZE(ARRAY)))
+ RESULT = ARRAY
+ END SUBROUTINE
+ !-----------------------------------------------------------
+ FUNCTION ARTH(U1,R,N) RESULT(U)
+ INTEGER(I4B), INTENT(IN) :: U1, R, N
+ INTEGER(I4B), DIMENSION(N) :: U
+ INTEGER(I4B) :: I
+ U(1) = U1
+ DO I=2,N
+  U(I) = U(I-1)+R
+ END DO
+ END FUNCTION
+ !-----------------------------------------------------------
+ FUNCTION GEOM(U1,R,N) RESULT(U)
+ INTEGER(I4B), INTENT(IN) :: U1, R, N
+ INTEGER(I4B), DIMENSION(N) :: U
+ INTEGER(I4B) :: I
+ U(1) = U1
+ DO I=2,N
+  U(I) = U(I-1)*R
+ END DO
+ END FUNCTION
+ !-----------------------------------------------------------
+ SUBROUTINE LOCATE(XX,X,J)
+ IMPLICIT NONE
+ REAL(DP), DIMENSION(:), INTENT(IN) :: XX
+ REAL(DP), INTENT(IN) :: X
+ INTEGER(I4B), INTENT(OUT) :: J
+ INTEGER(I4B) :: N, JL, JM, JU
+ LOGICAL :: ASCND
+ N = SIZE(XX)
+ ASCND = (XX(N) >= XX(1))
+ JL = 0
+ JU = N+1
+ DO
+  IF (JU-JL <= 1) EXIT
+   JM = (JU+JL)/2
+   IF (ASCND.EQV.(X >= XX(JM))) THEN
+    JL = JM
+   ELSE
+    JU = JM
+   END IF
+ END DO
+ IF (X.EQ.XX(1)) THEN
+  J = 1
+ ELSE IF (X.EQ.XX(N)) THEN
+  J = N-1
+ ELSE IF (ASCND.AND.((X.GT.XX(N)).OR.(X.LT.XX(1)))) THEN
+  J = -1
+ ELSE IF ((.NOT.ASCND).AND.((X.LT.XX(N)).OR.(X.GT.XX(1)))) THEN
+  J = -1
+ ELSE
+  J = JL
+ END IF
+ END SUBROUTINE
+ !-----------------------------------------------------------
+ SUBROUTINE UNIQUE(X,XCNT,XUNI,INFO)
+ IMPLICIT NONE
+ INTEGER(I4B), DIMENSION(:), INTENT(IN) :: X
+ INTEGER(I4B), DIMENSION(:), ALLOCATABLE, INTENT(OUT) :: XUNI, XCNT
+ INTEGER :: I,NUM
+ LOGICAL, DIMENSION(SIZE(X)) :: MASK
+ LOGICAL :: INFO
+ MASK = .FALSE.
+ ALLOCATE(XCNT(SIZE(X)))
+ INFO = .FALSE.
+ DO I=1,SIZE(X) 
+  NUM = COUNT(X(I)==X)
+  XCNT(I) = NUM
+  IF (NUM.EQ.1) THEN
+   MASK(I) = .TRUE.
+  ELSE
+   INFO = .TRUE.
+   IF (.NOT. ANY((X(I).EQ.X).AND.MASK)) THEN
+    MASK(I) = .TRUE.
+   END IF
+  END IF
+ END DO
+ ALLOCATE(XUNI(COUNT(MASK)))
+ XUNI = PACK(X,MASK)
+ CALL ISORT(XUNI,[0],SIZE(XUNI),1)
+ END SUBROUTINE
+ !-----------------------------------------------------------
+ SUBROUTINE INTERSECT(X,Y,ZUNI)
+ INTEGER(I4B), DIMENSION(:), INTENT(IN) :: X, Y
+ INTEGER(I4B), DIMENSION(:), ALLOCATABLE :: Z, ZCNT, ZUNI
+ LOGICAL(LGT), DIMENSION(SIZE(X)) :: MASK
+ LOGICAL(LGT) :: INFO
+ INTEGER(I4B) :: I, M
+ MASK = (/(ANY(X(I)==Y), I=1,SIZE(X))/)
+ M = COUNT(MASK)
+ IF (ALLOCATED(Z)) THEN
+  DEALLOCATE(Z)
+ END IF
+ ALLOCATE(Z(M))
+ Z = PACK(X,MASK)
+ CALL UNIQUE(Z,ZCNT,ZUNI,INFO)
+ END SUBROUTINE
+ !-----------------------------------------------------------  
+ FUNCTION EYE(N) RESULT(M)
+ IMPLICIT NONE
+ INTEGER, INTENT(IN) :: N
+ COMPLEX(DPC), DIMENSION(N,N) :: M
+ INTEGER :: I,J
+ DO I = 1,N
+  DO J = 1,N
+   IF (I.EQ.J) THEN
+    M(I,J) = 1._DP
+   ELSE
+    M(I,J) = 0._DP
+   END IF
+  END DO
+ END DO
+ END FUNCTION
+ !-----------------------------------------------------------
+ FUNCTION ONES(N) RESULT(X)
+ IMPLICIT NONE
+ INTEGER, INTENT(IN) :: N
+ COMPLEX(DPC), DIMENSION(N) :: X
+ INTEGER :: I
+ DO I = 1,N
+  X(I) = 1._DP
+ END DO 
+ END FUNCTION
+ !-----------------------------------------------------------
+ FUNCTION DIAG(X,N) RESULT(M)
+ IMPLICIT NONE
+ INTEGER, INTENT(IN) :: N
+ COMPLEX(DPC), DIMENSION(:) :: X
+ COMPLEX(DPC), DIMENSION(N,N) :: M
+ INTEGER :: I
+ M = 0.0_DP
+ DO I = 1,N
+  M(I,I) = X(I)
+ END DO
+ END FUNCTION
+ !-----------------------------------------------------------
+ FUNCTION DBAND(E,N,KL,KU) RESULT(M)
+ IMPLICIT NONE
+ INTEGER, INTENT(IN) :: N, KL, KU
+ COMPLEX(DPC), INTENT(IN), DIMENSION(:) :: E
+ COMPLEX(DPC), DIMENSION(N,N) :: M
+ INTEGER :: I, J
+ M = 0.0_DP
+ DO J = 1,N
+  DO I = MAX(1,J-KU),MIN(N,J+KL)
+   M(I,J) = E(KU+1+I-J)
+  END DO
+ END DO
+ END FUNCTION
+ !-----------------------------------------------------------
+ FUNCTION BBAND(E,N,KL,KU) RESULT(MB)
+ IMPLICIT NONE
+ INTEGER, INTENT(IN) :: N, KL, KU
+ COMPLEX(DPC), INTENT(IN), DIMENSION(:) :: E
+ COMPLEX(DPC), DIMENSION(KL+KU+1,N) :: MB
+ INTEGER :: I, J
+ MB = 0.0_DP
+ DO J = 1,N
+  DO I = MAX(1,J-KU),MIN(N,J+KL)
+   MB(KU+1+I-J,J) = E(KU+1+I-J)
+  END DO
+ END DO
+ END FUNCTION
+ !-----------------------------------------------------------
+ FUNCTION D2B(M,N,KL,KU) RESULT(MB)
+ IMPLICIT NONE
+ INTEGER, INTENT(IN) :: N, KL, KU
+ COMPLEX(DPC), INTENT(IN), DIMENSION(:,:) :: M
+ COMPLEX(DPC), DIMENSION(KL+KU+1,N) :: MB
+ INTEGER :: I, J
+ DO J = 1,N
+  DO I = MAX(1,J-KU),MIN(N,J+KL)
+   MB(KU+1+I-J,J) = M(I,J)
+  END DO
+ END DO
+ END FUNCTION
+ !-----------------------------------------------------------
+ SUBROUTINE D2US(M,N,SM,THRESH)
+ IMPLICIT NONE
+ TYPE(US), INTENT(OUT) :: SM
+ REAL(DP), DIMENSION(:,:), INTENT(IN) :: M
+ REAL(DP) :: THRESH
+ INTEGER(I4B) :: N, NELT
+ LOGICAL, DIMENSION(SIZE(M,1),SIZE(M,2)) :: MASK
+ MASK=ABS(M).GT.THRESH
+ NELT=COUNT(MASK)
+ ALLOCATE(SM%VAL(NELT),SM%IROW(NELT),SM%JCOL(NELT))
+ SM%N=N
+ SM%NELT=NELT
+ SM%VAL=PACK(M,MASK)
+ SM%IROW=PACK(SPREAD(ARTH(1,1,N),2,N),MASK)
+ SM%JCOL=PACK(SPREAD(ARTH(1,1,N),1,N),MASK)
+ END SUBROUTINE
+ !-----------------------------------------------------------
+ SUBROUTINE SPARSE_MV(SM,Y,X)
+ IMPLICIT NONE
+ TYPE(US), INTENT(IN) :: SM
+ REAL(DP), DIMENSION(SM%N), INTENT(IN) :: X
+ REAL(DP), DIMENSION(SM%N) :: Y
+ INTEGER(I4B) :: ISYM
+ !IF (.NOT.(SM%N.EQ.SIZE(X))) THEN
+ ! STOP "[SPARSE_MV] ERROR : X and Sparse SM should be same size "
+ !END IF
+ ISYM = 0
+ !Triad (Unstructured Sparse) -> Column Format
+ CALL DS2Y(SM%N,SM%NELT,SM%IROW,SM%JCOL,SM%VAL,ISYM)
+ CALL DSMV(SM%N,X,Y,SM%NELT,SM%IROW,SM%JCOL,SM%VAL,ISYM)
+ END SUBROUTINE
+ !-----------------------------------------------------------
+ SUBROUTINE SPARSE_SOLVE(SM,X,B)
+ IMPLICIT NONE
+ TYPE(US), INTENT(IN) :: SM
+ REAL(DP) :: TOL, ERR
+ REAL(DP), DIMENSION(SM%N), INTENT(IN) :: B
+ REAL(DP), DIMENSION(SM%N), INTENT(INOUT) :: X
+ REAL(DP), DIMENSION(SM%N) :: X0
+ REAL(DP), DIMENSION(:), ALLOCATABLE :: RWORK
+ INTEGER(I4B) :: ISYM, ITOL, ITER, ITMAX, IERR, IUNIT, LENW, LENIW 
+ INTEGER(I4B), DIMENSION(:), ALLOCATABLE :: IWORK
+ TOL = 0.0005_DP
+ ISYM = 0
+ ITOL = 1
+ ITMAX = 1000
+ IUNIT = 20
+ LENW = SM%NELT+8*SM%N
+ LENIW = SM%NELT+4*SM%N+12
+ X0 = 0.0_DP
+ ALLOCATE(RWORK(LENW),IWORK(LENIW))
+ !Triad (Unstructured Sparse) -> Column Format
+ CALL DS2Y(SM%N,SM%NELT,SM%IROW,SM%JCOL,SM%VAL,ISYM)
+ CALL DSLUBC(SM%N,B,X,SM%NELT,SM%IROW,SM%JCOL,SM%VAL,ISYM,ITOL,TOL,ITMAX, &
+             ITER,ERR,IERR,IUNIT,RWORK,LENW,IWORK,LENIW)
+ END SUBROUTINE
+ !-----------------------------------------------------------
+ !FUNCTION SPARSE_MM(SM,X) RESULT(Y)
+ !IMPLICIT NONE
+ !TYPE(SPARSE), INTENT(IN) :: SM
+ !REAL(DP), DIMENSION(:), INTENT(IN) :: X
+ !REAL(DP), DIMENSION(SIZE(X)), INTENT(OUT) :: Y
+ !IF (.NOT.(SM%N.EQ.SIZE(X)))
+ ! STOP "[SPARSE_MV] ERROR : X and Sparse SM should be same size "
+ !END IF
+ !ISYM = 0
+ !CALL DS2Y(SM%N,SM%NELT,SM%IROW,SM%JCOL,SM%VAL,ISYM)
+ !CALL DSMV(SM%N,X,Y,SM%NELT,SM&IROW,SM%JCOL,SM%VAL,ISYM)
+ !END SUBROUTINE
+ !-----------------------------------------------------------
+ !FUNCTION SPARSE_MATMUL() RESULT()
+ !END FUNCTION
+ !-----------------------------------------------------------
+ FUNCTION INV(A) RESULT(M)
+ IMPLICIT NONE
+ COMPLEX(DP), DIMENSION(:,:), INTENT(IN) :: A
+ COMPLEX(DP), DIMENSION(SIZE(A,1), SIZE(A,2)) :: M
+ COMPLEX(DP), DIMENSION(SIZE(A,1)) :: WORK
+ COMPLEX(DP), DIMENSION(SIZE(A,1)) :: IPIV
+ INTEGER :: N, INFO
+ M = A
+ N = SIZE(A,1)
+ CALL ZGETRF(N,N,M,N,IPIV,INFO)
+ IF (INFO/= 0) THEN
+  STOP "WARNING : Input Matrix is singular !"
+ END IF
+ CALL ZGETRI(N,M,N,IPIV,WORK,N,INFO)
+ IF (INFO/= 0) THEN
+  STOP "WARNING : Input Matrix is singular !"
+ END IF
+ END FUNCTION
+ !-----------------------------------------------------------
+ FUNCTION COND(A) RESULT(K)
+ IMPLICIT NONE
+ COMPLEX(DP), DIMENSION(:,:), INTENT(IN) :: A
+ COMPLEX(DP), DIMENSION(2*SIZE(A,1)) :: CWORK
+ REAL(DP) :: WORK(SIZE(A,1)), RWORK(2*SIZE(A,1))
+ REAL(DP) :: NORM, RCOND, K
+ INTEGER(DP) :: N, INFO
+ REAL(DP), EXTERNAL :: ZLANGE, ZLANGB
+ N = SIZE(A,1)
+ NORM = ZLANGE('I',N,N,A,N,WORK)
+ CALL ZGECON('I',N,A,N,NORM,RCOND,CWORK,RWORK,INFO)
+ IF (INFO/= 0) THEN
+  STOP "[COND] WARNING : Input Matrix is singular !"
+ END IF
+ K = 1./RCOND
+ END FUNCTION
+ !-----------------------------------------------------------
+ FUNCTION INTERP1(XA,YA,XVAL,BOUNDS_ERROR,FILL_VALUE) RESULT(YVAL)
+ IMPLICIT NONE
+ REAL(DP), DIMENSION(:), INTENT(IN) :: XA, YA, XVAL     !THE X AND Y ARRAYS, XVAL : THE VALUE AT WHICH TO INTERPOLATE Y
+ REAL(DP), INTENT(IN), OPTIONAL :: FILL_VALUE           !VALUE FOR OUT OF BOUNDS IF BOUNDS_ERROR IS .FALSE.
+ LOGICAL, INTENT(IN), OPTIONAL :: BOUNDS_ERROR          !WHETHER TO RAISE AN OUT OF BOUNDS ERROR	 
+ REAL(DP), DIMENSION(SIZE(XVAL)) :: YVAL 
+ REAL(DP) :: FILL_VALUE_TMP
+ INTEGER :: I, IPOS, N, M
+ LOGICAL :: BOUNDS_ERROR_TMP
+ IF (.NOT.(SIZE(XA).EQ.SIZE(YA))) THEN
+  STOP "[INTERP1] ERROR : XA and YA=F(XA) should be same size !"
+ END IF
+ N = SIZE(XA)
+ M = SIZE(XVAL)
+ DO I=1,M
+  IF(PRESENT(BOUNDS_ERROR)) THEN
+   BOUNDS_ERROR_TMP = BOUNDS_ERROR
+  ELSE
+   BOUNDS_ERROR_TMP = .TRUE.
+  END IF
+  IF(.NOT.BOUNDS_ERROR_TMP) THEN
+   IF(PRESENT(FILL_VALUE)) THEN
+    FILL_VALUE_TMP = FILL_VALUE
+   ELSE
+    FILL_VALUE_TMP = 0.0_DP
+   END IF
+  END IF
+  CALL LOCATE(XA,XVAL(I),IPOS)
+  IF(IPOS.EQ.-1) THEN
+   IF(BOUNDS_ERROR_TMP) THEN
+    WRITE(0,'("[INTERP1] ERROR: Interpolation out of bounds : ",ES11.4," in [",ES11.4,":",ES11.4,"]")') XVAL(I), XA(1), XA(N)
+    STOP   
+   ELSE
+    YVAL(I) = FILL_VALUE_TMP
+    RETURN
+   END IF
+  END IF
+  IF((IPOS.LT.N).AND.(IPOS.GT.0)) THEN
+   YVAL(I) = YA(IPOS)+(XVAL(I)-XA(IPOS))*(YA(IPOS+1)-YA(IPOS))/(XA(IPOS+1)-XA(IPOS))
+  ELSE IF(IPOS.EQ.N) THEN
+   YVAL(I) = YA(N)
+  ELSE IF(IPOS.EQ.0) THEN
+   YVAL(I) = YA(1)
+  ELSE
+   WRITE(0,'("[INTERP1] ERROR: Unexpected value of IPOS : ",I0)') IPOS
+   STOP
+  END IF
+ END DO
+ END FUNCTION
+ !-----------------------------------------------------------
+ FUNCTION POLINT1(XVAL,NDER,XA,YA) RESULT(YP)
+ IMPLICIT NONE
+ INTEGER(I4B), INTENT(IN) :: NDER
+ REAL(DP), DIMENSION(:), INTENT(IN) :: XA, YA, XVAL
+ REAL(DP), DIMENSION(SIZE(XVAL),0:NDER) :: YP
+ REAL(DP), DIMENSION(2*SIZE(XVAL)) :: WORK
+ REAL(DP), DIMENSION(SIZE(XVAL)) :: C
+ REAL(DP) :: YDER(NDER), YY, XX
+ INTEGER(I4B) :: I, IERR, N, M
+ IF (.NOT.(SIZE(XA).EQ.SIZE(YA))) THEN
+  STOP "[POLINT1] ERROR : XA and YA should be same size !"
+ END IF
+ N = SIZE(XA)
+ M = SIZE(XVAL)
+ CALL DPLINT(N,XA,YA,C) !
+ DO I=1,M
+  XX = XVAL(I)
+  CALL DPOLVL(NDER,XX,YY,YDER,N,XA,C,WORK,IERR) !
+  YP(I,0) = YY
+  YP(I,1:NDER) = YDER
+ END DO
+ END FUNCTION
+ !-----------------------------------------------------------
+ FUNCTION DIFF1(XA,YA) RESULT(DYA)
+ IMPLICIT NONE
+ REAL(DP), DIMENSION(:), INTENT(IN) :: XA, YA
+ REAL(DP), DIMENSION(SIZE(XA)) :: DYA
+ INTEGER(I4B) :: N, I
+ IF (.NOT.(SIZE(XA).EQ.SIZE(YA))) THEN
+  STOP "[DIFFN1] ERROR : XA and YA should be same size !"
+ END IF
+ N = SIZE(XA)
+ !DO I = 2,N-1
+ ! DYA(I) = (YA(I+1)-YA(I-1))/(XA(I+1)-XA(I-1))
+ !END DO
+ DO I = 3,N-2
+  DYA(I) = (-YA(I+2)+8*YA(I+1)-8*YA(I-1)+YA(I-2))/(12*(XA(I+1)-XA(I)))
+ END DO
+ END FUNCTION
+ !-----------------------------------------------------------
+ FUNCTION DIFF2(XA,YA) RESULT(D2YA)
+ IMPLICIT NONE
+ REAL(DP), DIMENSION(:), INTENT(IN) :: XA, YA
+ REAL(DP), DIMENSION(SIZE(XA)) :: D2YA
+ INTEGER(I4B) :: N, I
+ IF (.NOT.(SIZE(XA).EQ.SIZE(YA))) THEN
+  STOP "[DIFFN2] ERROR : XA and YA should be same size !"
+ END IF
+ N = SIZE(XA)
+ !DO I = 2,N-1
+ ! D2YA(I) = (YA(I+1)-2*YA(I)+YA(I-1))/(XA(I+1)-XA(I))**2
+ !END DO
+ DO I = 3,N-2
+  D2YA(I) = (-YA(I+2)+16*YA(I+1)-30*YA(I)+16*YA(I-1)-YA(I-2))/(12*(XA(I+1)-XA(I))**2)
+ END DO
+ END FUNCTION
+ !-----------------------------------------------------------
+ FUNCTION READ_ARRAY(FILENAME) RESULT(X)
+ IMPLICIT NONE
+ CHARACTER(LEN=*), INTENT(IN) :: FILENAME
+ REAL(DP), DIMENSION(:,:), ALLOCATABLE :: X
+ INTEGER(I4B) :: NLINES, NCOLS, I, REASON
+ LOGICAL :: FILEEXISTS
+ INQUIRE(FILE=FILENAME,EXIST=FILEEXISTS)
+ IF (.NOT.FILEEXISTS) THEN
+  STOP "[READ_ARRAY] WARNING : file doesn't exist !"
+ END IF
+ OPEN(UNIT=100,FILE=FILENAME,ACTION='READ')
+ READ(100,*,IOSTAT=REASON) NLINES, NCOLS
+ ALLOCATE(X(NLINES,NCOLS))
+ DO I=1,NLINES
+  READ(100,*,IOSTAT=REASON) X(I,:) 
+  IF (REASON.GT.0)  THEN
+   STOP "[READ_ARRAY] WARNING : Read error"
+  ELSEIF (REASON.LT.0) THEN
+   EXIT
+  END IF
+ END DO
+ END FUNCTION
+ !-----------------------------------------------------------
+ SUBROUTINE DATA_SIZE(FILENAME,NLINES,NCOLS)
+ CHARACTER(LEN=*), INTENT(IN) :: FILENAME
+ CHARACTER(LEN=200) :: CMD, lines_var, columns_var
+ INTEGER(I4B), INTENT(OUT) :: NLINES, NCOLS
+ INTEGER(I4B) :: REASON
+ LOGICAL :: FILEEXISTS
+ INQUIRE(FILE=FILENAME,EXIST=FILEEXISTS)
+ IF (.NOT.FILEEXISTS) THEN
+  STOP "[DATA_SIZE] WARNING : file doesn't exist !"
+ END IF
+ CMD = "source get_size " // TRIM(FILENAME)
+ WRITE(*,*) "[DATA_SIZE] running command line :"
+ WRITE(*,*) CMD
+ CALL SYSTEM(CMD)
+ CALL GET_ENVIRONMENT_VARIABLE("nlines",lines_var)
+ CALL GET_ENVIRONMENT_VARIABLE("ncols",columns_var)
+ WRITE(*,*) "[DATA_SIZE] variables"
+ WRITE(*,*) "lines_var   = ", lines_var
+ WRITE(*,*) "columns_var = ", columns_var
+ READ(lines_var,*,IOSTAT=REASON) NLINES
+ READ(columns_var,*,IOSTAT=REASON) NCOLS
+ END SUBROUTINE
+ !-----------------------------------------------------------
+END MODULE PE2D_AUX
