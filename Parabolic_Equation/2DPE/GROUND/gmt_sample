@@ -1,0 +1,8 @@
+file=$1
+delta=$2
+extn="${file##*.}"
+name="${file%.*}"
+output="${name}_sampled.${extn}"
+cmd="gmt sample1d -Fa -I${delta} $file > $output"
+
+eval "$cmd"
