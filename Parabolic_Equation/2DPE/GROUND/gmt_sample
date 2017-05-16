@@ -2,7 +2,21 @@ file=$1
 delta=$2
 extn="${file##*.}"
 name="${file%.*}"
+
 output="${name}_sampled.${extn}"
-cmd="gmt sample1d -Fa -I${delta} $file > $output"
+
+cmd="gmt sample1d -Fa -I${delta} $file > temp.dat"
+cmd1="gmt sample1d -Fa+1 -I${delta} $file > output1.dat"
+cmd2="gmt sample1d -Fa+2 -I${delta} $file > output2.dat"
 
 eval "$cmd"
+eval "$cmd1"
+eval "$cmd2"
+
+awk '{print $2}' output1.dat > temp1.dat
+awk '{print $2}' output2.dat > temp2.dat
+
+paste -d'\t\t' temp.dat temp1.dat temp2.dat > temp3.dat
+column -t temp3.dat > $output
+
+rm output1.dat output2.dat temp.dat temp1.dat temp2.dat temp3.dat
