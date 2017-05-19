@@ -1,4 +1,4 @@
-PROGRAM CNPE2_HT
+PROGRAM GTPE2_HT
  USE PE2D_TYPE
  USE PE2D_VAR
  USE PE2D_AUX
@@ -20,10 +20,10 @@ PROGRAM CNPE2_HT
  WRITE(*,*) "================================================"
  WRITE(*,*) ""
  WRITE(*,*) "GTPE2_HT"
- WRITE(*,*) "Dimension  : 2D"
- WRITE(*,*) "Atmosphere : Homogeneous"
- WRITE(*,*) "Boundary  : Generalized Terrain"
- WRITE(*,*) "Impedance : Rigid"
+ WRITE(*,*) "Dimension  : 	2D"
+ WRITE(*,*) "Atmosphere : 	Homogeneous"
+ WRITE(*,*) "Boundary   : 	Generalized Terrain"
+ WRITE(*,*) "Impedance  : 	Rigid"
  WRITE(*,*) ""
  WRITE(*,*) "================================================"
  WRITE(*,*) ""
@@ -61,27 +61,31 @@ PROGRAM CNPE2_HT
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Memory allocation
- ALLOCATE(K(N), DK2(N), ALT(N), PHI(N,M+1), T(N,N), S(N,N), M1(N,N), &
+ ALLOCATE(PHI(N,M+1), T(N,N), S(N,N), M1(N,N), &
  M2(N,N), I(N), P(N,M), LP(N,M), LP2(N,M), LPG(M), LPG2(M), E(N,N), &
  MB2(NDIAG,N), MB1(NDIAG,N), TEMP(N,1), M1T(N,N), M2T(N,N), IPIV(N), &
- TERR(-1:M+2), TERR1(-1:M+2), TERR2(-1:M+2), LIN(-2:M+2), GHX(3), MCOND(M,2), &
+ LIN(-2:M+2) MCOND(M,2), &
  MB1T(NDIAG,N), MB2T(KL+NDIAG,N), MT(NDIAG,N), MS(NDIAG,N), RGE(-1:M+2))
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Atmosphere density and wave velocity
+ ALLOCATE(C(N),K(N),DK2(N),ALT(N))
  DO NZ = 1,N
+  C(NZ)   = C0
   K(NZ)   = K0
   DK2(NZ) = K(NZ)**2-K0**2
   ALT(NZ) = NZ*DZ
  END DO
- !Absorbing layer
+ !Absorbing layer (PML)
  DO NZ=N-NABL,N THEN
   K(NZ)  = K0+AS*IM*(NZ-N+NABL)**2/NABL**2
  END
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Terrain Boundary condition
- LIN(-1) = 0
+ ALLOCATE(LIN(0:M),X(M),TERR(M),TERR1(M),TERR2(M),SLOPX(M))
+ ALLOCATE(ALPHA(M),BETA(M),X(M))
+ LIN(0) = 0
  THETA   = ANGLE*PI/180.0_DP
  X0      = L/2.0_DP
  S       = L/5.0_DP
@@ -91,9 +95,8 @@ PROGRAM CNPE2_HT
   TERR(MX)  = GHX(1)
   TERR1(MX) = GHX(2)
   TERR2(MX) = GHX(3)
-  RGE(MX)   = MX*DR
+  X(MX)     = MX*DR
   LIN(MX)   = LIN(MX-1)+(1+TERR1(MX))*DR
-  !--------
   SLOPE(MX) = ATAN(TERR1(MX))
   !--------
   ALPHA(MX) = TERR1(MX)**2+1
@@ -103,6 +106,7 @@ PROGRAM CNPE2_HT
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Starting field - Initial Condition 
+ ALLOCATE(PHI(N,M+1),PC(N,M),P(N,M),Q(N,M))
  A0 = 1.3717_DP
  A2 = -0.3701_DP
  B  = 3.0_DP
@@ -114,18 +118,12 @@ PROGRAM CNPE2_HT
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Matrix building
- !-----------------------------------------------------------
- !Initialization (Dense Matrices) - T, D and E
- !---------
  FD1 = (/ -0.5_DP, 0.0_DP, 0.5_DP /)
  FD2 = (/ 1.0_DP, -2.0_DP, 1.0_DP /)
  T = BBAND(FD2,N,KL,KU)
  S = BBAND(FD1,N,KL,KU)
  G = DIAG(DK2,N)
  D = D2B(G,N,KL,KU)
- !-----------------------------------------------------------
- !System - M1 and M2
- !---------
  WRITE(*,*) "Wide-angle order : ", WIDE 
  PHI_G(-1:0) = 0.0_DP
  PHI_T(-1:0) = 0.0_DP
@@ -133,28 +131,37 @@ PROGRAM CNPE2_HT
  !-----------------------------------------------------------
  !Forward-marching procedure
  CALL CPU_TIME(TI)
- !-----------------------------------------------------------
  DO MX = 2,M+1
   WRITE(*,*) "Step :", MX-1, "out of", M
   !-------------------------------
-  !Terrain integration
   !-------------------------------
+  !Terrain integration
   A_ALPHA = DR*(ALPHA(MX-2)/3+ALPHA(MX-1)/6)
   B_ALPHA = DR*(ALPHA(MX-2)/6+ALPHA(MX-1)/3)
   A_XI    = DR*(XI(MX-2)/3+XI(MX-1)/6)
   B_XI    = DR*(XI(MX-2)/6+XI(MX-1)/3)
   !-------------------------------
+  !-------------------------------
   !GTPE Coefficients updating
+  SELECT CASE (WIDE)
+   CASE(0)
+    E2 = I-(IM*DR/(2*K0))*D
+    E1 = I+(IM*DR/(2*K0))*D
+    D2 =  B_XI/(2*IM*K0*DZ)
+    D1 = -A_XI/(2*IM*K0*DZ)
+    C2 =  B_ALPHA/(2*IM*K0*DZ**2)
+    C1 = -A_ALPHA/(2*IM*K0*DZ**2)
+   CASE(1)
+    E2 = I+(1/(2*K0))*(1/(2*K0)-IM*DR)*D
+    E1 = I+(1/(2*K0))*(1/(2*K0)+IM*DR)*D
+    D2 = -(IM*BETA(MX-1)/(2*K0)+2*TERR1(MX-1)-B_XI)/(2*IM*K0*DZ)
+    D1 = -(IM*BETA(MX-2)/(2*K0)+2*TERR1(MX-2)+A_XI)/(2*IM*K0*DZ)
+    C2 = (IM*ALPHA(MX-1)/(2*K0)+B_ALPHA)/(2*IM*K0*DZ**2)
+    C1 = (IM*ALPHA(MX-2)/(2*K0)-A_ALPHA)/(2*IM*K0*DZ**2)
+  END SELECT
   !-------------------------------
-  E2 = I+(1/(2*K0))*(1/(2*K0)-IM*DR)*D
-  E1 = I+(1/(2*K0))*(1/(2*K0)+IM*DR)*D
-  D2 = -(IM*BETA(MX-1)/(2*K0)+2*TERR1(MX-1)-B_XI)/(2*IM*K0*DZ)
-  D1 = -(IM*BETA(MX-2)/(2*K0)+2*TERR1(MX-2)+A_XI)/(2*IM*K0*DZ)
-  C2 = (IM*ALPHA(MX-1)/(2*K0)+B_ALPHA)/(2*IM*K0*DZ**2)
-  C1 = (IM*ALPHA(MX-2)/(2*K0)-A_ALPHA)/(2*IM*K0*DZ**2)
   !-------------------------------
-  !Boundary Conditions updating
-  !-------------------------------
+  !Boundary Conditions RHS
   EPS2 = 2.0_DP*DZ*COS(SLOPE(MX-1))
   DG2  =          (3.0_DP/EPS2)+(3.0_DP/(2.0_DP*DR)+IM*K0)*SIN(SLOPE(MX-1))
   DT2  = -IM*K(M)+(3.0_DP/EPS2)-(3.0_DP/(2.0_DP*DR)+IM*K0)*SIN(SLOPE(MX-1))
@@ -166,7 +173,7 @@ PROGRAM CNPE2_HT
   WT2  = -2.0_DP*SIN(SLOPE(MX-1))/(DT2*DR)
   YG2  = -WG2/4.0_DP
   YT2  = -WT2/4.0_DP
-  !--------------
+  !Boundary Conditions LHS
   EPS1 = 2.0_DP*DZ*COS(SLOPE(MX-2))
   DG1  =          (3.0_DP/EPS1)+(3.0_DP/(2.0_DP*DR)+IM*K0)*SIN(SLOPE(MX-2))
   DT1  = -IM*K(M)+(3.0_DP/EPS1)-(3.0_DP/(2.0_DP*DR)+IM*K0)*SIN(SLOPE(MX-2))
@@ -182,9 +189,8 @@ PROGRAM CNPE2_HT
   PHIG(MX-1) = UG2*PHI(1,MX-1)+VG2*PHI(2,MX-1)  +WG2*PHIG(MX-2)+YG2*PHIG(MX-3)
   PHIT(MX-1) = UT2*PHI(N,MX-1)+VT2*PHI(N-1,MX-1)+WT2*PHIT(MX-2)+YT2*PHIT(MX-3)
   !-------------------------------
-  !Matrix updating
   !-------------------------------
-  !Right-hand side
+  !Updating Right-hand side
   T2 = T
   S2 = S
   T2(KL+1,1)      = T2(KL+1,1)+UG2
@@ -195,7 +201,7 @@ PROGRAM CNPE2_HT
   S2(KL+1,N)      = S2(KL+1,N)+UT2
   S2(KL,2)        = S2(KL,2)-VG2
   S2(KL+KU+1,N-1) = S2(KL+KU+1,N-1)+VT2
-  !Left-hand side
+  !Updating Left-hand side
   T1 = T
   S1 = S
   T1(KL+1,1)      = T1(KL+1,1)+UG1
@@ -206,12 +212,12 @@ PROGRAM CNPE2_HT
   S1(KL+1,N)      = S1(KL+1,N)+UT1
   S1(KL,2)        = S1(KL,2)-VG1
   S1(KL+KU+1,N-1) = S1(KL+KU+1,N-1)+VT1
-  !-------------------------------
+  !--------------
   MB2(KL+1:KL+NDIAG,:) = C2*T2+D2*S2+E2
   MB1                  = C1*T1+D1*S1+E1
   !-------------------------------
-  !Right hand side multiplication
   !-------------------------------
+  !Right hand side multiplication
   CALL ZGBMV('N',N,N,KL,KU,A,MB1,KL+KU+1,PHI(1:N,MX-1),1,B,TEMP,1)
   TEMP(1) = TEMP(1)+C1*(WG1*PHIG(MX-3)+YG1*PHIG(MX-4))        &
                    -D1*(WG1*PHIG(MX-3)+YG1*PHIG(MX-4))/2.0_DP &
@@ -223,22 +229,20 @@ PROGRAM CNPE2_HT
                    +D2*(WG2*PHIT(MX-2)+YG2*PHIT(MX-3))/2.0_DP
   WRITE(*,*) ".... Right-hand side multiplied"
   !-------------------------------
-  !System solving
   !-------------------------------
+  !System solving
   CALL ZGBSV(N,KL,KU,1,MB2,2*KL+KU+1,IPIV,TEMP,N,INFO)
   IF (INFO.NE.0) THEN
    STOP "ERROR : Matrix is singular"
   END IF
   WRITE(*,*) ".... System solved"
   !-------------------------------
-  !Complex pressure
   !-------------------------------
+  !Complex pressure
   PHI(1:N,MX) = TEMP(:,1)
   P(1:N,MX-1) = EXP(IM*K0*(MX-1)*DR)*PHI(1:N,MX)/SQRT((MX-1)*DR)
   WRITE(*,*)
  END DO
- !-----------------------------------------------------------
- !-----------------------------------------------------------
  CALL CPU_TIME(TF)
  !-----------------------------------------------------------
  !-----------------------------------------------------------
@@ -259,10 +263,10 @@ PROGRAM CNPE2_HT
  !-----------------------------------------------------------
  !Output
  IF (OUTPUT.EQ."Y") THEN
-  OPEN(UNIT=10,FILE="../results/Topo_LPg.dat")
-  OPEN(UNIT=20,FILE="../results/Topo_LP.dat")
-  OPEN(UNIT=30,FILE="../results/Topo_P.dat")
-  OPEN(UNIT=50,FILE="../results/Topo.dat")
+  OPEN(UNIT=10,FILE="GTPE_LPg.dat")
+  OPEN(UNIT=20,FILE="GTPE_LP.dat")
+  OPEN(UNIT=30,FILE="GTPE_P.dat")
+  OPEN(UNIT=50,FILE="Topo.dat")
   DO MX = 1,M
    WRITE(10,100) MX*DR, LPG(MX), LPG2(MX)
    WRITE(50,100) MX*DR, TERR(MX), TERR1(MX), TERR2(MX)
@@ -276,15 +280,12 @@ PROGRAM CNPE2_HT
   100 FORMAT(3(3X,F12.3))
   101 FORMAT(2(3X,F12.3),3X,F12.3,SP,F12.3,SS,"i")
   !Plotting of results
-  CALL SYSTEM('gnuplot -p plot_topo.plt')
-  CALL SYSTEM('gnuplot -p plot_topo2.plt')
+  CALL SYSTEM('gnuplot -p plot.plt')
+  CALL SYSTEM('gnuplot -p plot2.plt')
  END IF
  PRINT *, "Main CPU time (s) :", TF-TI
  PRINT *, "Source pressure P0 (dB) :", 20*LOG10(ABS(P0))
  !-----------------------------------------------------------
  !----------------------------------------------------------
-END PROGRAM PE2D_HT_FD
-!-----------------------------------------------------------
-!-------------      EXTERNAL PROCEDURES      ---------------
-!-----------------------------------------------------------
+END PROGRAM GTPE2_HT
 

@@ -120,6 +120,8 @@ PROGRAM TEST_SPARSE
   WRITE(*,1001) Y(I)
  END DO
  !--------
+ 
+ !--------
  999 FORMAT(6(F5.2,SP,F5.2,SS,"i",X))
  1000 FORMAT(6(F5.1,X))
  1001 FORMAT(F6.1,X)

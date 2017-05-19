@@ -1,4 +1,4 @@
-PROGRAM PE2D_HF_SSF
+PROGRAM GFPE2_HF
  USE PE2D_TYPE
  USE PE2D_VAR
  USE PE2D_AUX
@@ -12,13 +12,14 @@ PROGRAM PE2D_HF_SSF
  WRITE(*,*) "================================================"
  WRITE(*,*) ""
  WRITE(*,*) "University of Bristol"
+ WRITE(*,*) "Mech. Eng. Department"
  WRITE(*,*) "Aerodynamics and Aeroacoustics Research Group"
  WRITE(*,*) ""
  WRITE(*,*) "Codor Khodr, July 2016"
  WRITE(*,*) ""
  WRITE(*,*) "================================================"
  WRITE(*,*) ""
- WRITE(*,*) "GF2D_HFR"
+ WRITE(*,*) "GFPE2_HT"
  WRITE(*,*) "Dimension 	: 	2D"
  WRITE(*,*) "Atmosphere	:	Homogeneous"
  WRITE(*,*) "Boundary 	:	Flat"
@@ -28,124 +29,156 @@ PROGRAM PE2D_HF_SSF
  WRITE(*,*) ""
  WRITE(*,*) "Enter inputs L, H, f, zs, As"
  WRITE(*,*) ""
- READ *, L, H, f, zs, As
+ READ *, L, F, ZS, AS
  !----------------------------------------------------------
- !Problem parameters
  !-----------------------------------------------------------
- lmbda0 = c0/f
- k0 = 2*PI*f/c0
- dz = lmbda0/10
- dr = lmbda0/10
- Ha = 30*lmbda0
- N = floor(H/dz)
- M = floor(L/dr)
- Ns = MAX(1,floor(zs/dz))
- Na = floor(Ha/dz)
+ C0     = 343.0_DP
+ LMBDA0 = C0/F
+ K0     = 2*PI*F/C0
+ DZ     = LMBDA0/10
+ DR     = LMBDA0/10
+ DKZ    = 2*PI/(N*DZ)
+ H      = 100*LMBDA0
+ HA     = 30*LMBDA0
+ N      = FLOOR(H/DZ)
+ M      = FLOOR(L/DR)
+ WRITE(*,*) "================================================"
+ WRITE(*,*) ""
+ WRITE(*,*) "Size of the system : ", N
+ WRITE(*,*) "Number of steps : ", M
+ WRITE(*,*) ""
+ WRITE(*,*) "================================================"
+ NS     = MAX(1,FLOOR(ZS/DZ))
+ NA     = FLOOR(HA/DZ)
+ A      = IM/(2.0_DP*K0*DZ**2)
+ BETA   = 0.0_DP
+ WIDE   = 0
+ !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Memory allocation
+ ALLOCATE(K(N), KZ(N), REF(N), PHASE(N), DK2(N), Z(N), DELTA(N), R(M), &
+ BUFR(N), PHI(N,M+1), FPHI(N,M), FPHII(N,M), FPHIR(N,M), FPHIS(M), &
+ WA(2,N), CH(2*N), PHI1(N,M), PHI2(N,M), P(N,M), LP(N,M), LPRMS(N,M), &
+ P0(N,M), LPG(M), LPRMSG(M))
  !-----------------------------------------------------------
- ALLOCATE(k(N), kz(N), Ref(N), Phase(N), dk2(N), z(N), DELTA(N), r(M), &
- BUFR(N), PHI(N,M+1), FPHI(N,M), FPHIi(N,M), FPHIr(N,M), FPHIs(M), &
- WA(2,N), CH(2*N), PHI1(N,M), PHI2(N,M), P(N,M), LP(N,M), LPrms(N,M), &
- P0(N,M), LPg(M), LPrmsg(M))
  !-----------------------------------------------------------
- !Discretization
- !-----------------------------------------------------------
- !z-direction wavenumber and kz-domain discretization
- z = (/ (nz*dz, nz = 1,N) /)
- dkz = 2*PI/(N*dz)
- DO nz = 1,N
-  IF (nz >= N-Na) THEN
-   k(nz) = k0+As*j*(nz-N+Na)**2/Na**2
-  ELSE
-   k(nz) = k0
-  ENDIF
-  kz(nz) = nz*dkz
-  dk2(nz) = j*(k(nz)**2-(k0**2))/(2*k0)
-  Phase(nz) = EXP(j*dr*(SQRT(k0**2-kz(nz)**2)-k0**2))
+ !Atmosphere density and wave velocity
+ DO NZ = 1,N
+  C(NZ)     = C0
+  K(NZ)     = K0
+  DK2(NZ)   = K(NZ)**2-K0**2
+  ALT(NZ)   = NZ*DZ
+  PHASE(NZ) = EXP(IM*DR*(SQRT(K0**2-KZ(NZ)**2)-K0**2))
+  DELTA(NZ) = EXP(IM*DR*DK2(NZ)/(2*K0))
  END DO
- DELTA = EXP(j*dr*dk2/(2*k0))
+ !Absorbing layer (PML)
+ DO NZ = N-NA,N
+  K(NZ)     = K0+AS*IM*(NZ-N+NA)**2/NA**2
+ END
  !-----------------------------------------------------------
- ALLOCATE(dalpha(1:M),r(0:M+1),linear(0:M+1),alpha(1:M+1))
- r = (/ (mx*dr, mx = 0,M+1) /)
- linear(0) = 0
- DO mx = 1,M+1
-   xl = HILL(H0,x0,r(mx-1),s)
-   xr = HILL(H0,x0,r(mx),s)
-   alpha(mx) = (xr - xl)/dr
-   linear(mx) = linear(mx-1) + (1 + alpha(mx))*dr
+ !-----------------------------------------------------------
+ !Terrain Boundary condition
+ LIN(-1) = 0
+ THETA   = ANGLE*PI/180.0_DP
+ X0      = L/2.0_DP
+ S       = L/5.0_DP
+ H0      = SQRT(EXP(1.0_DP)/2.0_DP)*S*ATAN(THETA)
+ DO MX = 0,M
+  GHX      = GHILL(H0,X0,S,MX*DR)
+  TERR(MX)  = GHX(1)
+  TERR1(MX) = GHX(2)
+  TERR2(MX) = GHX(3)
+  R(MX)     = MX*DR
+  LIN(MX)   = LIN(MX-1)+(1+TERR1(MX))*DR
+  SLOPE(MX) = ATAN(TERR1(MX))
  END DO
+ !TERR1 = DIFF1(X,TERR)
+ !TERR2 = DIFF2(X,TERR)
+ !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Starting field
- !-----------------------------------------------------------
- A0 = 1.3717
- A2 = -0.3701
- B = 3
- DO nz = 1,N
-  PHI(nz,1) = SQRT(j*k0)* &
-  ((A0+A2*k0**2*(nz*dz-zs)**2)*EXP(-k0**2*(nz*dz-zs)**2/B) &
-  + (A0+A2*k0**2*(nz*dz+zs)**2)*EXP(-k0**2*(nz*dz+zs)**2/B))
+ A0 = 1.3717_DP
+ A2 = -0.3701_DP
+ B  = 3.0_DP
+ DO NZ = 1,N
+  PHI(NZ,1) = SQRT(IM*K0)* &
+              ((A0+A2*K0**2*(NZ*DZ-ZS)**2)*EXP(-K0**2*(NZ*DZ-ZS)**2/B) + &
+              (A0+A2*K0**2*(NZ*DZ+ZS)**2)*EXP(-K0**2*(NZ*DZ+ZS)**2/B))
  END DO
  !-----------------------------------------------------------
- !Main Loop
  !-----------------------------------------------------------
- !Start of Forward-marching procedure
- CALL CPU_TIME(START)
- !Initialization of the FFT subroutines :
- !IFAC and WA depend only on N -> used in CFFTF1 and CFFTB1
- CALL CFFTI1(N,WA,IFAC)
- DO mx = 2,M+1
-  WRITE(*, *) "Step :", mx-1, "out of", M
+ !Forward-marching procedure
+ CALL CPU_TIME(TI)
+ CALL CFFTI1(N,WA,IFAC)      !IFAC AND WA DEPEND ONLY ON N -> USED IN CFFTF1 AND CFFTB1
+ DO MX = 2,M+1
+  WRITE(*, *) "STEP :", MX-1, "OUT OF", M
+  !-------------------------------
+  !-------------------------------
   !Surface term
-  dalpha(mx-1) = (alpha(mx)-alpha(mx-1))/dr
-  DO nz = 1,N
-   FPHIs(mx-1) = FPHIs(mx-1)+PHI(nz,mx-1)*dz*EXP(-j*beta*nz*dz)
+  DO NZ = 1,N
+   FPHIS(MX-1)  = FPHIS(MX-1)+PHI(NZ,MX-1)*DZ*EXP(-J*BETA*NZ*DZ)
   END DO
-  BUFR = PHI(:,mx-1)
-  CALL CFFTF1(N,BUFR,CH,WA,IFAC)
-  FPHIi(:,mx-1) = BUFR
-  CALL FLIP(BUFR)
-  FPHIr(:,mx-1) = BUFR
-  FPHI(:,mx-1) = (FPHIi(:,mx-1)+FPHIr(:,mx-1))*Phase
-  BUFR = FPHI(:,mx-1)
-  CALL CFFTB1(N,BUFR,CH,WA,IFAC)
-  PHI1(:,mx-1) = BUFR
-  PHI2(:,mx-1) = 2*j*beta*FPHIs(mx-1)*EXP(-j*beta*z)*EXP(j*dr*(SQRT(k0**2-beta**2)-k0**2))
-  PHI(:,mx) = DELTA*(PHI1(:,mx-1)+PHI2(:,mx-1))*EXP(j*k0*z*dalpha(mx-1))
-  P(:,mx-1) = EXP(j*k0*(mx-1)*dr)*PHI(:,mx)*(1/SQRT((mx-1)*dr))
+  !-------------------------------
+  !-------------------------------
+  !Forward Fourier transform
+  TEMP          = PHI(:,MX-1)
+  CALL CFFTF1(N,TEMP,CH,WA,IFAC)
+  FPHII(:,MX-1) = TEMP                                          !Incident wave
+  CALL FLIP(TEMP,FPHIR(:,MX-1))                                 !Reflected wave
+  FPHI(:,MX-1)  = (FPHII(:,MX-1)+FPHIR(:,MX-1))*PHASE           !Total wave
+  !Inverse Fourier Transform
+  TEMP          = FPHI(:,MX-1)
+  CALL CFFTB1(N,TEMP,CH,WA,IFAC)
+  PHI1(:,MX-1)  = TEMP/N                                        !Normalize Fourier Transform
+  PHI2(:,MX-1)  = 2*IM*BETA*FPHIS(MX-1)*EXP(-IM*BETA*Z)*EXP(IM*DR*(SQRT(K0**2-BETA**2)-K0**2))
+  PHI(:,MX)     = DELTA*(PHI1(:,MX-1)+PHI2(:,MX-1))*EXP(IM*K0*Z*TERR2(MX-1))
+  !-------------------------------
+  !-------------------------------
+  !Real pressure
+  P(:,MX-1)     = EXP(IM*K0*(MX-1)*DR)*PHI(:,MX)*(1/SQRT((MX-1)*DR))
  END DO
- !End of Forward-marching procedure
- CALL CPU_TIME(FINISH)
+ CALL CPU_TIME(TF)
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Transmission loss conversion
- Ps = ABS(P(Ns,1))
- Preal = REAL(REAL(P))
- Pimag = REAL(AIMAG(P))
- DO mx = 1,M
-  DO nz = 1,N
-   LP(nz,mx) = 20*LOG10(ABS(P(nz,mx-1))/Ps)
+ P0 = ABS(P(NS,1))
+ DO MX = 1,M
+  DO NZ = 1,N
+   LP(NZ,MX) = 20.*LOG10(ABS(P(NZ,MX))/P0)
+   IF (LP(NZ,MX).LE.-120) THEN
+    LP(NZ,MX) = -120
+   END IF
   END DO
  END DO
- LPg = LP(1,1:M)
- LPrms = LP/SQRT(2.)
- LPrmsg = LPrms(1,1:M)
+ LPG = LP(1,1:M)
+ LP2 = LP/SQRT(2.0_DP)
+ LPG2 = LP2(1,1:M)
  !-----------------------------------------------------------
- !Output
  !-----------------------------------------------------------
- OPEN(UNIT=10,FILE="GF2D_HFR_LPg.dat")
- OPEN(UNIT=20,FILE="GF2D_HFR_LP.dat")
- OPEN(UNIT=30,FILE="GF2D_HFR_P.dat")
- DO nz = 1,N
-   WRITE(20, 100, advance="no") LP(nz,1:M)
-   WRITE(30, 101, advance="no") P(nz,1:M)
- END DO
- DO mx = 1,M
-  WRITE(10, 100) mx*dr, LPg(mx), LPrmsg(mx)
- END DO
- 100 FORMAT(3X,F8.3,$)
- 101 FORMAT(3X,F8.3,SP,F8.3,SS,"i",$)
- PRINT *, "Main CPU time (s) :", FINISH-START
- PRINT *, "Source pressure P0 (dB) :", 20*LOG10(Ps)
+ !Output 
+ IF (OUTPUT.EQ."Y") THEN
+  OPEN(UNIT=10,FILE="GFPE_LPg.dat")
+  OPEN(UNIT=20,FILE="GFPE_LP.dat")
+  OPEN(UNIT=30,FILE="GFPE_P.dat")
+  OPEN(UNIT=50,FILE="Topo.dat")
+  DO MX = 1,M
+   WRITE(10,100) MX*DR, LPG(MX), LPG2(MX)
+   WRITE(50,100) MX*DR, TERR(MX), TERR1(MX), TERR2(MX)
+   DO NZ = 1,N
+    WRITE(20,100) MX*DR, NZ*DZ+TERR(MX), LP(NZ,MX)
+    WRITE(30,101) MX*DR, NZ*DZ+TERR(MX), ABS(P(NZ,MX))
+   END DO
+   WRITE(20,*)
+   WRITE(30,*) 
+  END DO
+  100 FORMAT(3(3X,F12.3))
+  101 FORMAT(2(3X,F12.3),3X,F12.3,SP,F12.3,SS,"i")
+  !Plotting of results
+  CALL SYSTEM('gnuplot -p plot.plt')
+  CALL SYSTEM('gnuplot -p plot2.plt')
+ END IF
+ PRINT *, "Main CPU time (s) :", TF-TI
+ PRINT *, "Source pressure P0 (dB) :", 20*LOG10(ABS(P0))
  !-----------------------------------------------------------
-END PROGRAM PE2D_HF_SSF
+ !----------------------------------------------------------
+END PROGRAM GFPE2_HF

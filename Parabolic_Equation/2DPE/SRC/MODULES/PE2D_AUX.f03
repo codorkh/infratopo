@@ -3,10 +3,10 @@ MODULE PE2D_AUX
  IMPLICIT NONE
  CONTAINS
  !-----------------------------------------------------------
- SUBROUTINE FLIP(X)
+ SUBROUTINE FLIP(X,Y)
  IMPLICIT NONE
- COMPLEX(DP), DIMENSION(:) :: X
- X = X(UBOUND(X,1):LBOUND(X,1):-1)
+ COMPLEX(DP), DIMENSION(:) :: X, Y
+ Y = X(UBOUND(X,1):LBOUND(X,1):-1)
  END SUBROUTINE
  !-----------------------------------------------------------
  SUBROUTINE COPY(ARRAY,RESULT)
@@ -35,7 +35,7 @@ MODULE PE2D_AUX
   U(I) = U(I-1)*R
  END DO
  END FUNCTION
- !-----------------------------------------------------------
+ !----------------------------------------------------------- 
  SUBROUTINE LOCATE(XX,X,J)
  IMPLICIT NONE
  REAL(DP), DIMENSION(:), INTENT(IN) :: XX
@@ -407,7 +407,7 @@ MODULE PE2D_AUX
  END DO
  END FUNCTION
  !-----------------------------------------------------------
- FUNCTION READ_ARRAY(FILENAME) RESULT(X)
+ SUBROUTINE READ_ARRAY(FILENAME,X,NLINES,NCOLS)
  IMPLICIT NONE
  CHARACTER(LEN=*), INTENT(IN) :: FILENAME
  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: X
@@ -428,7 +428,7 @@ MODULE PE2D_AUX
    EXIT
   END IF
  END DO
- END FUNCTION
+ END SUBROUTINE
  !-----------------------------------------------------------
  SUBROUTINE DATA_SIZE(FILENAME,NLINES,NCOLS)
  CHARACTER(LEN=*), INTENT(IN) :: FILENAME
