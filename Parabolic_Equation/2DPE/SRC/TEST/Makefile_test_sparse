@@ -1,9 +1,11 @@
 # Modified by Anton Shterenlikht
 
-FC=		gfortran
+FC=		gfortran-mp-5
 FFLAGS=		-g -O3 -fbacktrace -Wall -fcheck=all
-LDFLAGS=	-Wl,-rpath="/usr/local/lib/gcc" -llapack -lblas \
-		-L$(HOME)/lib -lslatec -llapack -lsparseblas -lblas
+#LDFLAGS=	-Wl,-rpath="/usr/local/lib/gcc" -llapack -lblas \
+#		-L$(HOME)/lib -lslatec -llapack -lsparseblas -lblas
+
+LDFLAGS=        -lslatec -llapack -lblas
 
 MOD_DIR=	../MODULES/
 MOD_SRC=	$(addprefix $(MOD_DIR), PE2D_TYPE.f03 PE2D_GROUND.f03 PE2D_ATMOS.f03 PE2D_AUX.f03 PE2D_NUM.f03)

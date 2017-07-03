@@ -1,4 +1,5 @@
 MODULE PE2D_TYPE
+ USE IEEE_ARITHMETIC
  IMPLICIT NONE
  !-----------------------------------------------------------
  INTEGER, PARAMETER :: I4B = SELECTED_INT_KIND(9)
@@ -27,4 +28,3 @@ MODULE PE2D_TYPE
  END TYPE US
  !-----------------------------------------------------------
 END MODULE PE2D_TYPE
-

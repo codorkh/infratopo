@@ -27,9 +27,9 @@ PROGRAM GTPE2_HT
  WRITE(*,*) ""
  WRITE(*,*) "================================================"
  WRITE(*,*) ""
- WRITE(*,*) "Enter inputs L, f, zs, As, angle"
+ WRITE(*,*) "Enter inputs L, f, zs, As, angle, dc"
  WRITE(*,*) ""
- READ *, L, F, ZS, AS, ANGLE
+ READ *, L, F, ZS, AS, ANGLE, DC
  WRITE(*,*) ""
  WRITE(*,*) "Store output ? (Y or N)"
  WRITE(*,*) ""
@@ -70,11 +70,12 @@ PROGRAM GTPE2_HT
  !-----------------------------------------------------------
  !Atmosphere density and wave velocity
  ALLOCATE(C(N),K(N),DK2(N),ALT(N))
+ Z0 = 0.5_DP
  DO NZ = 1,N
-  C(NZ)   = C0
+  ALT(NZ) = NZ*DZ
+  C(NZ)   = C0+DC*LOG(1+Z/Z0)
   K(NZ)   = K0
   DK2(NZ) = K(NZ)**2-K0**2
-  ALT(NZ) = NZ*DZ
  END DO
  !Absorbing layer (PML)
  DO NZ=N-NABL,N THEN
@@ -105,7 +106,7 @@ PROGRAM GTPE2_HT
  END DO
  !-----------------------------------------------------------
  !-----------------------------------------------------------
- !Starting field - Initial Condition 
+ !Starting field - Initial Condition
  ALLOCATE(PHI(N,M+1),PC(N,M),P(N,M),Q(N,M))
  A0 = 1.3717_DP
  A2 = -0.3701_DP
@@ -124,7 +125,7 @@ PROGRAM GTPE2_HT
  S = BBAND(FD1,N,KL,KU)
  G = DIAG(DK2,N)
  D = D2B(G,N,KL,KU)
- WRITE(*,*) "Wide-angle order : ", WIDE 
+ WRITE(*,*) "Wide-angle order : ", WIDE
  PHI_G(-1:0) = 0.0_DP
  PHI_T(-1:0) = 0.0_DP
  !-----------------------------------------------------------
@@ -262,30 +263,45 @@ PROGRAM GTPE2_HT
  !-----------------------------------------------------------
  !-----------------------------------------------------------
  !Output
- IF (OUTPUT.EQ."Y") THEN
-  OPEN(UNIT=10,FILE="GTPE_LPg.dat")
-  OPEN(UNIT=20,FILE="GTPE_LP.dat")
-  OPEN(UNIT=30,FILE="GTPE_P.dat")
-  OPEN(UNIT=50,FILE="Topo.dat")
-  DO MX = 1,M
-   WRITE(10,100) MX*DR, LPG(MX), LPG2(MX)
-   WRITE(50,100) MX*DR, TERR(MX), TERR1(MX), TERR2(MX)
-   DO NZ = 1,N
-    WRITE(20,100) MX*DR, NZ*DZ+TERR(MX), LP(NZ,MX)
-    WRITE(30,101) MX*DR, NZ*DZ+TERR(MX), ABS(P(NZ,MX))
-   END DO
-   WRITE(20,*)
-   WRITE(30,*) 
+ OPEN(UNIT=10,FILE="GTPE2_LPg.dat")
+ OPEN(UNIT=20,FILE="GTPE2_LP.dat")
+ OPEN(UNIT=30,FILE="GTPE2_PC.dat")
+ OPEN(UNIT=40,FILE="GTPE2_P.dat")
+ OPEN(UNIT=50,FILE="GTPE2_TOPO.dat")
+ DO MX = 1,M
+  WRITE(10,100) MX*DR, LPG(MX), LQG(MX)
+  WRITE(50,100) MX*DR, TERR(MX), TERR1(MX), TERR2(MX), SLOPX(MX)
+  DO NZ = 1,N
+   WRITE(20,100) MX*DR, NZ*DZ+TERR(MX), LP(NZ,MX), LQ(NZ,MX)
+   WRITE(30,101) MX*DR, NZ*DZ+TERR(MX), PC(NZ,MX), QC(NZ,MX)
+   WRITE(40,100) MX*DR, NZ*DZ+TERR(MX), P(NZ,MX)
   END DO
-  100 FORMAT(3(3X,F12.3))
-  101 FORMAT(2(3X,F12.3),3X,F12.3,SP,F12.3,SS,"i")
-  !Plotting of results
-  CALL SYSTEM('gnuplot -p plot.plt')
-  CALL SYSTEM('gnuplot -p plot2.plt')
- END IF
- PRINT *, "Main CPU time (s) :", TF-TI
- PRINT *, "Source pressure P0 (dB) :", 20*LOG10(ABS(P0))
+  WRITE(20,*)
+  WRITE(30,*)
+  WRITE(40,*)
+ END DO
+ 100 FORMAT(3(3X,F12.3))
+ 101 FORMAT(2(3X,F12.3),3X,F12.3,SP,F12.3,SS,"i")
+ !Plotting of results
+ !CALL SYSTEM('gnuplot -p plot.plt')
+ !CALL SYSTEM('gnuplot -p plot2.plt')
+ WRITE(*,*) "================================================"
+ WRITE(*,*) "Input file  : ", TOPO
+ WRITE(*,*) "================================================"
+ WRITE(*,*) "Output file : GTPE2_LPg.dat"
+ WRITE(*,*) "              GTPE2_LP.dat"
+ WRITE(*,*) "              GTPE2_PC.dat"
+ WRITE(*,*) "              GTPE2_P.dat"
+ WRITE(*,*) "              GTPE2_TOPO.dat"
+ WRITE(*,*) "================================================"
+ WRITE(*,*)
+ WRITE(*,*) "System size (N x M) :", N, M
+ WRITE(*,*) "Step size :", DR
+ WRITE(*,*) "Main CPU time (s) :", TF-TI
+ WRITE(*,*) "Real pressure at the source - P0 (Pa) :", P0
+ WRITE(*,*) "Real pressure at the target - PR (Pa) :", PR
+ WRITE(*,*) "SPL/TL at the target - LPR (dB) :", LPR
+ WRITE(*,*)
  !-----------------------------------------------------------
  !----------------------------------------------------------
 END PROGRAM GTPE2_HT
-

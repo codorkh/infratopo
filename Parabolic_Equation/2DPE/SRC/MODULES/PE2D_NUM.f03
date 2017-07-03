@@ -15,16 +15,51 @@ MODULE PE2D_NUM
   END DO
  END IF
  END FUNCTION FCTL
- !----------------------------------------------------------- 
- FUNCTION COMB(K,N) RESULT(KCN)
- IMPLICIT NONE
- INTEGER(I4B) :: K, N
- INTEGER(I4B) :: NUM, DENOM
- REAL(DP) :: KCN
- NUM = FCTL(N)
- DENOM = FCTL(K)*FCTL(N-K)
- KCN = NUM/DENOM
+ !-----------------------------------------------------------
+ INTEGER FUNCTION COMB(K,N) RESULT(KCN)
+  IMPLICIT NONE
+  INTEGER(I4B) :: K, N
+  INTEGER(I4B) :: NUM, DENOM
+  NUM = FCTL(N)
+  DENOM = FCTL(K)*FCTL(N-K)
+  KCN = NUM/DENOM
  END FUNCTION COMB
+ !-----------------------------------------------------------
+ ! FUNCTION POLEVAL(P,X,ND) RESULT(Y)
+ !  INTEGER(I4B) :: N, I
+ !  COMPLEX(DPC) :: P(0:N), X, Y
+ !  Y(0) = P(N)
+ !  Y(1:ND) = CMPLX(0.0_DP,0.0_DP,KIND=DPC)
+ !  DO I = N-1,0,-1
+ !   NND = MIN(ND,N+1-I)
+ !   DO J = NND,1,-1
+ !    Y(J) = Y(J)*X+Y(J-1)
+ !   END DO
+ !   Y(0) = Y(0)*X+P(I)
+ !  END DO
+ !  DO I = 0,ND
+ !   Y(I)  = FCTL(I)*Y(I)
+ !  END DO
+ ! END FUNCTION
+ !-----------------------------------------------------------
+ FUNCTION POLMULT(P,Q) RESULT(R)
+  INTEGER(I4B) :: N, M, I, J
+  COMPLEX(DPC) :: P(:), Q(:)
+  COMPLEX(DPC), ALLOCATABLE, DIMENSION(:) :: R
+  N = SIZE(P,1)
+  M = SIZE(Q,1)
+  ALLOCATE(R(0:M+N))
+  R = CMPLX(0.0_DP,0.0_DP,KIND=DPC)
+  DO I = 0,N
+    DO J = 0,M
+      R(I+J) = R(I+J)+P(I)*Q(J)
+    END DO
+  END DO
+ END FUNCTION
+ !-----------------------------------------------------------
+ !FUNCTION POLDIV(P,X,ND) RESULT(DP)
+ !
+ !END FUNCTION
  !-----------------------------------------------------------
  FUNCTION FDC(I) RESULT(C)
  IMPLICIT NONE
@@ -38,7 +73,7 @@ MODULE PE2D_NUM
   Q = (I-1)/2
  ENDIF
  DO J = 0,I
-  C(J) = ((-1)**(Q-J))*COMB(J,I)
+  C(J) = ((-1)**(Q-J))*REAL(COMB(J,I),KIND=DP)
  END DO
  END FUNCTION FDC
  !-----------------------------------------------------------

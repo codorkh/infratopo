@@ -3,6 +3,16 @@ MODULE PE2D_AUX
  IMPLICIT NONE
  CONTAINS
  !-----------------------------------------------------------
+ SUBROUTINE INFINITY(INF)
+ IMPLICIT NONE
+ REAL(DP) :: X
+ COMPLEX(DPC) :: INF
+ IF (IEEE_SUPPORT_INF(X)) THEN
+  X   = IEEE_VALUE(X,IEEE_POSITIVE_INF)
+  INF = CMPLX(X,0.0_DP,KIND=DPC)
+ END IF
+ END SUBROUTINE
+ !-----------------------------------------------------------
  SUBROUTINE FLIP(X,Y)
  IMPLICIT NONE
  COMPLEX(DP), DIMENSION(:) :: X, Y
@@ -35,7 +45,7 @@ MODULE PE2D_AUX
   U(I) = U(I-1)*R
  END DO
  END FUNCTION
- !----------------------------------------------------------- 
+ !-----------------------------------------------------------
  SUBROUTINE LOCATE(XX,X,J)
  IMPLICIT NONE
  REAL(DP), DIMENSION(:), INTENT(IN) :: XX
@@ -79,7 +89,7 @@ MODULE PE2D_AUX
  MASK = .FALSE.
  ALLOCATE(XCNT(SIZE(X)))
  INFO = .FALSE.
- DO I=1,SIZE(X) 
+ DO I=1,SIZE(X)
   NUM = COUNT(X(I)==X)
   XCNT(I) = NUM
   IF (NUM.EQ.1) THEN
@@ -111,7 +121,7 @@ MODULE PE2D_AUX
  Z = PACK(X,MASK)
  CALL UNIQUE(Z,ZCNT,ZUNI,INFO)
  END SUBROUTINE
- !-----------------------------------------------------------  
+ !-----------------------------------------------------------
  FUNCTION EYE(N) RESULT(M)
  IMPLICIT NONE
  INTEGER, INTENT(IN) :: N
@@ -135,32 +145,30 @@ MODULE PE2D_AUX
  INTEGER :: I
  DO I = 1,N
   X(I) = 1._DP
- END DO 
- END FUNCTION
- !-----------------------------------------------------------
- FUNCTION DIAG(X,N) RESULT(M)
- IMPLICIT NONE
- INTEGER, INTENT(IN) :: N
- COMPLEX(DPC), DIMENSION(:) :: X
- COMPLEX(DPC), DIMENSION(N,N) :: M
- INTEGER :: I
- M = 0.0_DP
- DO I = 1,N
-  M(I,I) = X(I)
  END DO
  END FUNCTION
  !-----------------------------------------------------------
- FUNCTION DBAND(E,N,KL,KU) RESULT(M)
+ FUNCTION BDIAG(X,N,KL,KU) RESULT(MB)
  IMPLICIT NONE
- INTEGER, INTENT(IN) :: N, KL, KU
- COMPLEX(DPC), INTENT(IN), DIMENSION(:) :: E
+ INTEGER(I4B), INTENT(IN) :: N, KL, KU
+ COMPLEX(DPC), DIMENSION(:) :: X
+ COMPLEX(DPC), DIMENSION(KL+KU+1,N) :: MB
+ INTEGER(I4B) :: I
+ MB = 0.0_DP
+ DO I = 1,N
+  MB(KU+1,I) = X(I)
+ END DO
+ END FUNCTION
+ !-----------------------------------------------------------
+ FUNCTION DDIAG(X,N) RESULT(M)
+ IMPLICIT NONE
+ INTEGER(I4B), INTENT(IN) :: N
+ COMPLEX(DPC), DIMENSION(:) :: X
  COMPLEX(DPC), DIMENSION(N,N) :: M
- INTEGER :: I, J
+ INTEGER(I4B) :: I
  M = 0.0_DP
- DO J = 1,N
-  DO I = MAX(1,J-KU),MIN(N,J+KL)
-   M(I,J) = E(KU+1+I-J)
-  END DO
+ DO I = 1,N
+   M(I,I) = X(I)
  END DO
  END FUNCTION
  !-----------------------------------------------------------
@@ -174,6 +182,20 @@ MODULE PE2D_AUX
  DO J = 1,N
   DO I = MAX(1,J-KU),MIN(N,J+KL)
    MB(KU+1+I-J,J) = E(KU+1+I-J)
+  END DO
+ END DO
+ END FUNCTION
+ !-----------------------------------------------------------
+ FUNCTION DBAND(E,N,KL,KU) RESULT(M)
+ IMPLICIT NONE
+ INTEGER, INTENT(IN) :: N, KL, KU
+ COMPLEX(DPC), INTENT(IN), DIMENSION(:) :: E
+ COMPLEX(DPC), DIMENSION(N,N) :: M
+ INTEGER :: I, J
+ M = 0.0_DP
+ DO J = 1,N
+  DO I = MAX(1,J-KU),MIN(N,J+KL)
+   M(I,J) = E(KU+1+I-J)
   END DO
  END DO
  END FUNCTION
@@ -223,6 +245,19 @@ MODULE PE2D_AUX
  CALL DSMV(SM%N,X,Y,SM%NELT,SM%IROW,SM%JCOL,SM%VAL,ISYM)
  END SUBROUTINE
  !-----------------------------------------------------------
+ !FUNCTION SPARSE_MM(SM,X) RESULT(Y)
+ !IMPLICIT NONE
+ !TYPE(SPARSE), INTENT(IN) :: SM
+ !REAL(DP), DIMENSION(:), INTENT(IN) :: X
+ !REAL(DP), DIMENSION(SIZE(X)), INTENT(OUT) :: Y
+ !IF (.NOT.(SM%N.EQ.SIZE(X)))
+ ! STOP "[SPARSE_MV] ERROR : X and Sparse SM should be same size "
+ !END IF
+ !ISYM = 0
+ !CALL DS2Y(SM%N,SM%NELT,SM%IROW,SM%JCOL,SM%VAL,ISYM)
+ !CALL DSMV(SM%N,X,Y,SM%NELT,SM&IROW,SM%JCOL,SM%VAL,ISYM)
+ !END SUBROUTINE
+ !-----------------------------------------------------------
  SUBROUTINE SPARSE_SOLVE(SM,X,B)
  IMPLICIT NONE
  TYPE(US), INTENT(IN) :: SM
@@ -231,7 +266,7 @@ MODULE PE2D_AUX
  REAL(DP), DIMENSION(SM%N), INTENT(INOUT) :: X
  REAL(DP), DIMENSION(SM%N) :: X0
  REAL(DP), DIMENSION(:), ALLOCATABLE :: RWORK
- INTEGER(I4B) :: ISYM, ITOL, ITER, ITMAX, IERR, IUNIT, LENW, LENIW 
+ INTEGER(I4B) :: ISYM, ITOL, ITER, ITMAX, IERR, IUNIT, LENW, LENIW
  INTEGER(I4B), DIMENSION(:), ALLOCATABLE :: IWORK
  TOL = 0.0005_DP
  ISYM = 0
@@ -247,22 +282,6 @@ MODULE PE2D_AUX
  CALL DSLUBC(SM%N,B,X,SM%NELT,SM%IROW,SM%JCOL,SM%VAL,ISYM,ITOL,TOL,ITMAX, &
              ITER,ERR,IERR,IUNIT,RWORK,LENW,IWORK,LENIW)
  END SUBROUTINE
- !-----------------------------------------------------------
- !FUNCTION SPARSE_MM(SM,X) RESULT(Y)
- !IMPLICIT NONE
- !TYPE(SPARSE), INTENT(IN) :: SM
- !REAL(DP), DIMENSION(:), INTENT(IN) :: X
- !REAL(DP), DIMENSION(SIZE(X)), INTENT(OUT) :: Y
- !IF (.NOT.(SM%N.EQ.SIZE(X)))
- ! STOP "[SPARSE_MV] ERROR : X and Sparse SM should be same size "
- !END IF
- !ISYM = 0
- !CALL DS2Y(SM%N,SM%NELT,SM%IROW,SM%JCOL,SM%VAL,ISYM)
- !CALL DSMV(SM%N,X,Y,SM%NELT,SM&IROW,SM%JCOL,SM%VAL,ISYM)
- !END SUBROUTINE
- !-----------------------------------------------------------
- !FUNCTION SPARSE_MATMUL() RESULT()
- !END FUNCTION
  !-----------------------------------------------------------
  FUNCTION INV(A) RESULT(M)
  IMPLICIT NONE
@@ -304,8 +323,8 @@ MODULE PE2D_AUX
  IMPLICIT NONE
  REAL(DP), DIMENSION(:), INTENT(IN) :: XA, YA, XVAL     !THE X AND Y ARRAYS, XVAL : THE VALUE AT WHICH TO INTERPOLATE Y
  REAL(DP), INTENT(IN), OPTIONAL :: FILL_VALUE           !VALUE FOR OUT OF BOUNDS IF BOUNDS_ERROR IS .FALSE.
- LOGICAL, INTENT(IN), OPTIONAL :: BOUNDS_ERROR          !WHETHER TO RAISE AN OUT OF BOUNDS ERROR	 
- REAL(DP), DIMENSION(SIZE(XVAL)) :: YVAL 
+ LOGICAL, INTENT(IN), OPTIONAL :: BOUNDS_ERROR          !WHETHER TO RAISE AN OUT OF BOUNDS ERROR
+ REAL(DP), DIMENSION(SIZE(XVAL)) :: YVAL
  REAL(DP) :: FILL_VALUE_TMP
  INTEGER :: I, IPOS, N, M
  LOGICAL :: BOUNDS_ERROR_TMP
@@ -331,7 +350,7 @@ MODULE PE2D_AUX
   IF(IPOS.EQ.-1) THEN
    IF(BOUNDS_ERROR_TMP) THEN
     WRITE(0,'("[INTERP1] ERROR: Interpolation out of bounds : ",ES11.4," in [",ES11.4,":",ES11.4,"]")') XVAL(I), XA(1), XA(N)
-    STOP   
+    STOP
    ELSE
     YVAL(I) = FILL_VALUE_TMP
     RETURN
@@ -421,7 +440,7 @@ MODULE PE2D_AUX
  READ(100,*,IOSTAT=REASON) NLINES, NCOLS
  ALLOCATE(X(NLINES,NCOLS))
  DO I=1,NLINES
-  READ(100,*,IOSTAT=REASON) X(I,:) 
+  READ(100,*,IOSTAT=REASON) X(I,:)
   IF (REASON.GT.0)  THEN
    STOP "[READ_ARRAY] WARNING : Read error"
   ELSEIF (REASON.LT.0) THEN
@@ -431,8 +450,9 @@ MODULE PE2D_AUX
  END SUBROUTINE
  !-----------------------------------------------------------
  SUBROUTINE DATA_SIZE(FILENAME,NLINES,NCOLS)
+ IMPLICIT NONE
  CHARACTER(LEN=*), INTENT(IN) :: FILENAME
- CHARACTER(LEN=200) :: CMD, lines_var, columns_var
+ CHARACTER(LEN=200) :: CMD_LINES, CMD_COLS, lines_var, columns_var
  INTEGER(I4B), INTENT(OUT) :: NLINES, NCOLS
  INTEGER(I4B) :: REASON
  LOGICAL :: FILEEXISTS
@@ -440,17 +460,41 @@ MODULE PE2D_AUX
  IF (.NOT.FILEEXISTS) THEN
   STOP "[DATA_SIZE] WARNING : file doesn't exist !"
  END IF
- CMD = "source get_size " // TRIM(FILENAME)
+ CMD_LINES = "nlines=$(wc -l < " // TRIM(FILENAME) // ")"
+ CMD_COLS  = "ncols=$(awk '{print NF}' " // TRIM(FILENAME) // " | sort -nu | tail -n 1)"
  WRITE(*,*) "[DATA_SIZE] running command line :"
- WRITE(*,*) CMD
- CALL SYSTEM(CMD)
+ WRITE(*,*) TRIM(CMD_LINES)
+ WRITE(*,*) TRIM(CMD_COLS)
+ CALL SYSTEM(TRIM(CMD_LINES))
+ CALL SYSTEM(TRIM(CMD_COLS))
  CALL GET_ENVIRONMENT_VARIABLE("nlines",lines_var)
  CALL GET_ENVIRONMENT_VARIABLE("ncols",columns_var)
  WRITE(*,*) "[DATA_SIZE] variables"
- WRITE(*,*) "lines_var   = ", lines_var
- WRITE(*,*) "columns_var = ", columns_var
+ WRITE(*,*) "lines_var   = ", TRIM(lines_var)
+ WRITE(*,*) "columns_var = ", TRIM(columns_var)
  READ(lines_var,*,IOSTAT=REASON) NLINES
  READ(columns_var,*,IOSTAT=REASON) NCOLS
  END SUBROUTINE
+ !-----------------------------------------------------------
+ ! SUBROUTINE PROGRESS(J,JMAX)
+ ! IMPLICIT NONE
+ ! REAL(DP) :: Q
+ ! INTEGER(I4B) :: J, K, JMAX
+ ! CHARACTER(LEN=47) :: BAR="???% |                                        |"
+ ! Q = J/JMAX
+ !
+ ! WRITE(UNIT=BAR(1:3),FMT="(I3)") 10*J
+ ! DO K=1,J
+ !   BAR(6+K:6+K) = "*"
+ ! ENDDO
+ ! ! PRINT THE PROGRESS BAR.
+ ! WRITE(UNIT=6,FMT="(A1,A17)",ADVANCE="NO") CHAR(13), BAR
+ ! IF (J/=10) THEN
+ !   FLUSH(UNIT=6)
+ ! ELSE
+ !   WRITE(UNIT=6,FMT=*)
+ ! ENDIF
+ ! RETURN
+ ! END SUBROUTINE PROGRESS
  !-----------------------------------------------------------
 END MODULE PE2D_AUX
